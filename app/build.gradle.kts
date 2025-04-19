@@ -47,7 +47,7 @@ dependencies {
 
     implementation(platform("com.google.firebase:firebase-bom:33.12.0"))
     implementation("com.google.firebase:firebase-analytics")
-
+    implementation("com.github.tehras:charts:0.2.4-alpha")
     implementation(libs.nav.compose)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)

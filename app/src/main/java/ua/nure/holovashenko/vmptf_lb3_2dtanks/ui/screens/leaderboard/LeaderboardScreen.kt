@@ -6,6 +6,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
@@ -24,12 +25,16 @@ fun LeaderboardScreen(
     val leaderboard by viewModel.leaderboard.collectAsState()
     val sortOption by viewModel.sortOption.collectAsState()
     var expanded by remember { mutableStateOf(false) }
+    var showChartDialog by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
                 title = { Text("Leaderboard", fontWeight = FontWeight.Bold) },
                 actions = {
+                    IconButton(onClick = { showChartDialog = true }) {
+                        Icon(Icons.Default.Info, contentDescription = "Show Chart")
+                    }
                     Box {
                         IconButton(onClick = { expanded = true }) {
                             Icon(Icons.Default.MoreVert, contentDescription = "Sorting")
@@ -83,12 +88,6 @@ fun LeaderboardScreen(
                 .fillMaxSize()
         ) {
             Text(
-                text = "🏆 Leaderboard",
-                style = MaterialTheme.typography.headlineMedium,
-                modifier = Modifier.padding(bottom = 8.dp)
-            )
-
-            Text(
                 text = "Sorting: ${sortOption.label}",
                 style = MaterialTheme.typography.titleMedium,
                 modifier = Modifier.padding(bottom = 16.dp)
@@ -104,6 +103,24 @@ fun LeaderboardScreen(
                     }
                 }
             }
+        }
+
+        // Спливаюче вікно з діаграмою
+        if (showChartDialog) {
+            AlertDialog(
+                onDismissRequest = { showChartDialog = false },
+                confirmButton = {
+                    TextButton(onClick = { showChartDialog = false }) {
+                        Text("Close")
+                    }
+                },
+                title = {
+                    Text("Kills Distribution")
+                },
+                text = {
+                    KillsPieChart(players = leaderboard)
+                }
+            )
         }
     }
 }
