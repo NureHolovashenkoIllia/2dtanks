@@ -5,102 +5,140 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
-import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.firestore.FirebaseFirestore
+import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 
 @Composable
 fun AuthScreen(
-    onAuthSuccess: (String) -> Unit // передаємо UID
+    onAuthSuccess: (String) -> Unit,
+    viewModel: AuthViewModel = viewModel()
 ) {
-    val auth = FirebaseAuth.getInstance()
-    var email by remember { mutableStateOf("") }
-    var password by remember { mutableStateOf("") }
-    var isRegister by remember { mutableStateOf(false) }
-    var errorMessage by remember { mutableStateOf<String?>(null) }
-    var isLoading by remember { mutableStateOf(false) }
+    val email by viewModel.email.collectAsState()
+    val password by viewModel.password.collectAsState()
+    val isRegister by viewModel.isRegister.collectAsState()
+    val isLoading by viewModel.isLoading.collectAsState()
+    val isInputValid by viewModel.isInputValid.collectAsState()
+    val errorMessage by viewModel.errorMessage.collectAsState()
+    val emailError by viewModel.emailError.collectAsState()
+    val passwordError by viewModel.passwordError.collectAsState()
+    val emailTouched by viewModel.emailTouched.collectAsState()
+    val passwordTouched by viewModel.passwordTouched.collectAsState()
+    val emailEdited by viewModel.emailEdited.collectAsState()
+    val passwordEdited by viewModel.passwordEdited.collectAsState()
 
-    Column(
+    Box(
         modifier = Modifier
             .fillMaxSize()
-            .padding(24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+            .padding(16.dp),
+        contentAlignment = Alignment.Center
     ) {
-        Text(if (isRegister) "Registration" else "Login", style = MaterialTheme.typography.headlineMedium)
-        Spacer(modifier = Modifier.height(24.dp))
-
-        OutlinedTextField(
-            value = email,
-            onValueChange = { email = it },
-            label = { Text("Email") },
-            singleLine = true
-        )
-
-        OutlinedTextField(
-            value = password,
-            onValueChange = { password = it },
-            label = { Text("Password") },
-            singleLine = true
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Button(
-            onClick = {
-                isLoading = true
-                errorMessage = null
-                if (isRegister) {
-                    auth.createUserWithEmailAndPassword(email, password)
-                        .addOnCompleteListener { task ->
-                            isLoading = false
-                            if (task.isSuccessful) {
-                                val user = task.result?.user
-                                val uid = user?.uid ?: ""
-                                if (uid.isNotEmpty()) {
-                                    // ✅ Додаємо користувача в Firestore
-                                    val firestore = FirebaseFirestore.getInstance()
-                                    val userData = hashMapOf("email" to email)
-                                    firestore.collection("users").document(uid).set(userData)
-                                        .addOnSuccessListener {
-                                            onAuthSuccess(uid)
-                                        }
-                                        .addOnFailureListener { e ->
-                                            errorMessage = "Error saving user: ${e.localizedMessage}"
-                                        }
-                                } else {
-                                    errorMessage = "Failed to get user UID"
-                                }
-                            } else {
-                                errorMessage = task.exception?.localizedMessage
-                            }
-                        }
-                } else {
-                    auth.signInWithEmailAndPassword(email, password)
-                        .addOnCompleteListener { task ->
-                            isLoading = false
-                            if (task.isSuccessful) {
-                                onAuthSuccess(task.result?.user?.uid ?: "")
-                            } else {
-                                errorMessage = task.exception?.localizedMessage
-                            }
-                        }
-                }
-            },
-            enabled = !isLoading
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 32.dp, vertical = 24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text(if (isRegister) "Register" else "Login")
-        }
+            Text(
+                text = if (isRegister) "Create Account" else "Welcome Back",
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onPrimaryContainer
+            )
 
-        Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(24.dp))
 
-        TextButton(onClick = { isRegister = !isRegister }) {
-            Text(if (isRegister) "Already have an account? Log in" else "Not registered yet? Create an account")
-        }
+            OutlinedTextField(
+                value = email,
+                onValueChange = {
+                    viewModel.email.value = it
+                    viewModel.emailEdited.value = true
+                },
+                label = { Text("Email") },
+                singleLine = true,
+                isError = emailTouched && emailEdited && emailError != null,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .onFocusChanged {
+                        if (!it.isFocused) {
+                            viewModel.onEmailBlur()
+                        }
+                    }
+            )
+            if (emailTouched && emailError != null) {
+                Text(
+                    text = emailError ?: "",
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodySmall
+                )
+            }
 
-        errorMessage?.let {
             Spacer(modifier = Modifier.height(16.dp))
-            Text(it, color = MaterialTheme.colorScheme.error)
+
+            OutlinedTextField(
+                value = password,
+                onValueChange = {
+                    viewModel.password.value = it
+                    viewModel.passwordEdited.value = true
+                },
+                label = { Text("Password") },
+                singleLine = true,
+                visualTransformation = PasswordVisualTransformation(),
+                isError = passwordTouched && passwordEdited && passwordError != null,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .onFocusChanged {
+                        if (!it.isFocused) {
+                            viewModel.onPasswordBlur()
+                        }
+                    }
+            )
+            if (passwordTouched && passwordError != null) {
+                Text(
+                    text = passwordError ?: "",
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodySmall
+                )
+            }
+
+            errorMessage?.let {
+                Spacer(modifier = Modifier.height(12.dp))
+                Text(
+                    text = it,
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodySmall
+                )
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            ElevatedButton(
+                onClick = { viewModel.onAuthClick(onAuthSuccess) },
+                enabled = isInputValid && !isLoading,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(48.dp)
+            ) {
+                Text(
+                    text = if (isRegister) "Register" else "Log In",
+                    fontSize = 16.sp
+                )
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            TextButton(onClick = { viewModel.toggleAuthMode() }) {
+                Text(
+                    text = if (isRegister)
+                        "Already have an account? Log in"
+                    else
+                        "Don’t have an account? Register",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            }
         }
     }
 }

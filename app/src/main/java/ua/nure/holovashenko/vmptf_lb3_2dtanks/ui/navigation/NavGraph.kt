@@ -99,11 +99,13 @@ fun TanksGame() {
                 }
             }
             composable(AuthRoute) {
-                AuthScreen { uid ->
-                    navController.navigate(MainRoute) {
-                        popUpTo(AuthRoute) { inclusive = true }
+                AuthScreen(
+                    onAuthSuccess = { uid ->
+                        navController.navigate(MainRoute) {
+                            popUpTo(AuthRoute) { inclusive = true }
+                        }
                     }
-                }
+                )
             }
             composable(ProfileRoute) {
                 ProfileScreen(onLogout = {
