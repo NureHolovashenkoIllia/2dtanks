@@ -1,4 +1,4 @@
-package ua.nure.holovashenko.vmptf_lb3_2dtanks.ui.screens
+package ua.nure.holovashenko.vmptf_lb3_2dtanks.ui.navigation
 
 const val MainRoute = "main"
 const val AuthRoute = "auth"
