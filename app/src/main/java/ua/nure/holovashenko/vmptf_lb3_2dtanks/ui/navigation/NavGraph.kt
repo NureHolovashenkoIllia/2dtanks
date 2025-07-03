@@ -39,7 +39,6 @@ fun TanksGame() {
                     launchJoinGameScreen = { uid ->
                         navController.navigate("$JoinGameRoute/$uid")
                     },
-                    launchAuthScreen = { navController.navigate(AuthRoute) },
                     launchProfileScreen = { navController.navigate(ProfileRoute) }
                 )
             }
