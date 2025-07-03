@@ -50,7 +50,7 @@ fun KillsPieChart(players: List<PlayerStatistic>) {
             filteredPlayers.forEachIndexed { index, player ->
                 val percentage = (player.kills * 100f / totalKills).toInt()
                 Text(
-                    text = "${index + 1}. ${player.email} - ${player.kills} kills ($percentage%)",
+                    text = "${index + 1}. ${player.nickname} - ${player.kills} kills ($percentage%)",
                     style = MaterialTheme.typography.bodySmall,
                     color = pieColors[index % pieColors.size],
                     modifier = Modifier.padding(start = 8.dp)

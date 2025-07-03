@@ -142,7 +142,7 @@ fun LeaderboardTable(players: List<PlayerStatistic>) {
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 TableCell("#", weight = 0.5f, fontWeight = FontWeight.Bold)
-                TableCell("Email", weight = 2f, fontWeight = FontWeight.Bold)
+                TableCell("Nickname", weight = 2f, fontWeight = FontWeight.Bold)
                 TableCell("Wins", weight = 1f, fontWeight = FontWeight.Bold)
                 TableCell("Matches", weight = 1.3f, fontWeight = FontWeight.Bold)
                 TableCell("Destroyed", weight = 1.5f, fontWeight = FontWeight.Bold)
@@ -161,7 +161,7 @@ fun LeaderboardTable(players: List<PlayerStatistic>) {
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 TableCell("${index + 1}", weight = 0.5f)
-                TableCell(player.email ?: "Player", weight = 2f, multiline = true)
+                TableCell(player.nickname ?: "Player", weight = 2f, multiline = true)
                 TableCell("${player.wins}", weight = 1f)
                 TableCell("${player.matches}", weight = 1.3f)
                 TableCell("${player.kills}", weight = 1.5f)

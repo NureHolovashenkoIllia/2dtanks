@@ -17,6 +17,9 @@ class ProfileViewModel : ViewModel() {
 
     val user = auth.currentUser
 
+    private val _nickname = mutableStateOf<String?>(null)
+    val nickname: State<String?> = _nickname
+
     private val _gamesWon = mutableStateOf<Int?>(null)
     val gamesWon: State<Int?> = _gamesWon
 
@@ -39,6 +42,7 @@ class ProfileViewModel : ViewModel() {
         viewModelScope.launch {
             firestore.collection("users").document(uid).get()
                 .addOnSuccessListener { doc ->
+                    _nickname.value = doc.getString("nickname") ?: "Unknown"
                     _gamesWon.value = doc.getLong("wins")?.toInt()
                     _gamesPlayed.value = doc.getLong("matches")?.toInt()
                     _tanksDestroyed.value = doc.getLong("kills")?.toInt()
@@ -76,7 +80,7 @@ class ProfileViewModel : ViewModel() {
                     } else {
                         try {
                             val userDoc = firestore.collection("users").document(winnerUid).get().await()
-                            userDoc.getString("email") ?: "Unknown"
+                            userDoc.getString("nickname") ?: "Unknown"
                         } catch (_: Exception) {
                             "Unknown"
                         }
