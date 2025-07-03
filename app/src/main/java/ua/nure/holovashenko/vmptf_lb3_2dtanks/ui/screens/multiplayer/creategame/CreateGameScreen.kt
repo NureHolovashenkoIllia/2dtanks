@@ -3,15 +3,17 @@ package ua.nure.holovashenko.vmptf_lb3_2dtanks.ui.screens.multiplayer.creategame
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import ua.nure.holovashenko.vmptf_lb3_2dtanks.ui.screens.multiplayer.GameType
+import ua.nure.holovashenko.vmptf_lb3_2dtanks.ui.screens.multiplayer.joingame.SegmentedButtonRow
 
 @Composable
 fun CreateGameScreen(
@@ -25,10 +27,10 @@ fun CreateGameScreen(
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
-                title = { Text("Create Game") },
+                title = { Text("Create Game", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 }
             )
@@ -37,71 +39,52 @@ fun CreateGameScreen(
         Column(
             modifier = Modifier
                 .padding(padding)
-                .padding(24.dp)
+                .padding(horizontal = 24.dp)
                 .fillMaxSize(),
             verticalArrangement = Arrangement.Top,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(Modifier.height(24.dp))
 
-            val gameTypes = listOf("Free" to GameType.FREE, "Tournament" to GameType.TOURNAMENT)
-            val selectedType = uiState.type
+            SegmentedButtonRow(
+                options = listOf(GameType.FREE, GameType.TOURNAMENT),
+                selected = uiState.type,
+                onOptionSelected = viewModel::onGameTypeChange
+            )
 
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text("Game Mode:")
-                Spacer(modifier = Modifier.width(12.dp))
-                gameTypes.forEach { (label, type) ->
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.padding(end = 12.dp)
-                    ) {
-                        RadioButton(
-                            selected = selectedType == type,
-                            onClick = { viewModel.onGameTypeChange(type) },
-                            enabled = !uiState.isCreating
-                        )
-                        Text(label)
-                    }
-                }
-            }
-
-
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(Modifier.height(16.dp))
 
             if (uiState.type == GameType.TOURNAMENT) {
                 OutlinedTextField(
                     value = uiState.teamsCount,
                     onValueChange = viewModel::onTeamsCountChange,
                     label = { Text("Teams count") },
-                    enabled = !uiState.isCreating,
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    isError = uiState.errorMessage?.contains("Teams") == true
                 )
 
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(Modifier.height(12.dp))
 
                 OutlinedTextField(
                     value = uiState.playersPerTeam,
                     onValueChange = viewModel::onPlayersPerTeamChange,
                     label = { Text("Players per team") },
-                    enabled = !uiState.isCreating,
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    isError = uiState.errorMessage?.contains("Players per team") == true
                 )
             } else {
                 OutlinedTextField(
                     value = uiState.playersCount,
                     onValueChange = viewModel::onPlayersCountChange,
                     label = { Text("Players count") },
-                    enabled = !uiState.isCreating,
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    isError = uiState.errorMessage?.contains("Players count") == true
                 )
             }
 
@@ -111,40 +94,37 @@ fun CreateGameScreen(
                 value = uiState.gameDuration,
                 onValueChange = viewModel::onGameDurationChange,
                 label = { Text("Game duration (min)") },
-                enabled = !uiState.isCreating,
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
+                isError = uiState.errorMessage?.contains("Game duration") == true
             )
 
-            Spacer(modifier = Modifier.height(24.dp))
-
-            if (uiState.isCreating) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.Center,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    CircularProgressIndicator(modifier = Modifier.size(24.dp))
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Text("Creating your room...")
-                }
-            } else {
-                Button(
-                    onClick = { viewModel.createRoom(currentPlayerId, onRoomCreated) },
-                    modifier = Modifier.fillMaxWidth().height(56.dp)
-                ) {
-                    Text("Create room")
-                }
-            }
-
             uiState.errorMessage?.let {
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(12.dp))
                 Text(
                     text = it,
                     color = MaterialTheme.colorScheme.error,
                     style = MaterialTheme.typography.bodyMedium
                 )
+            }
+
+            Spacer(modifier = Modifier.weight(1f))
+
+            Button(
+                onClick = { viewModel.createRoom(currentPlayerId, onRoomCreated) },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp),
+                enabled = !uiState.isCreating
+            ) {
+                if (uiState.isCreating) {
+                    CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text("Creating...", style = MaterialTheme.typography.bodyLarge)
+                } else {
+                    Text("Create", style = MaterialTheme.typography.bodyLarge)
+                }
             }
         }
     }

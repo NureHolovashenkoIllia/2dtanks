@@ -19,86 +19,119 @@ class CreateGameViewModel : ViewModel() {
     private val firestore = FirebaseFirestore.getInstance()
     private var creationJob: Job? = null
 
-    fun onPlayersCountChange(value: String) {
-        _uiState.value = _uiState.value.copy(playersCount = value)
-    }
+    fun onPlayersCountChange(value: String) = updateState { it.copy(playersCount = value) }
 
-    fun onGameDurationChange(value: String) {
-        _uiState.value = _uiState.value.copy(gameDuration = value)
-    }
+    fun onGameDurationChange(value: String) = updateState { it.copy(gameDuration = value) }
 
-    fun onTeamsCountChange(value: String) {
-        _uiState.value = _uiState.value.copy(teamsCount = value)
-    }
+    fun onTeamsCountChange(value: String) = updateState { it.copy(teamsCount = value) }
 
-    fun onPlayersPerTeamChange(value: String) {
-        _uiState.value = _uiState.value.copy(playersPerTeam = value)
-    }
+    fun onPlayersPerTeamChange(value: String) = updateState { it.copy(playersPerTeam = value) }
 
-    fun onGameTypeChange(type: GameType) {
-        _uiState.value = _uiState.value.copy(type = type)
-    }
+    fun onGameTypeChange(type: GameType) = updateState { it.copy(type = type, errorMessage = null) }
 
     fun createRoom(currentPlayerId: String, onRoomCreated: (String, String, Boolean) -> Unit) {
-        _uiState.value = _uiState.value.copy(isCreating = true, errorMessage = null)
+        if (!validateInputs()) return
+
+        creationJob?.cancel()
+        updateState { it.copy(isCreating = true, errorMessage = null) }
 
         creationJob = viewModelScope.launch {
             val roomId = generateUniqueRoomId()
-            val isTournament = _uiState.value.type == GameType.TOURNAMENT
+            val isTournament = uiState.value.type == GameType.TOURNAMENT
 
-            val roomData = mutableMapOf<String, Any>(
-                "roomId" to roomId,
-                "gameDuration" to _uiState.value.gameDuration.toInt(),
-                "type" to if (isTournament) "tournament" else "free"
-            )
+            val roomData = buildRoomData(roomId, currentPlayerId, isTournament)
 
-            if (isTournament) {
-                val teamsCount = _uiState.value.teamsCount.toInt()
-                val playersPerTeam = _uiState.value.playersPerTeam.toInt()
-                roomData["teamsCount"] = teamsCount
-                roomData["playersPerTeam"] = playersPerTeam
-
-                val teams = mutableMapOf<String, List<String>>()
-
-                // Можна додати currentPlayerId до першої команди:
-                teams["team1"] = listOf(currentPlayerId)
-
-                // Інші команди поки порожні
-                for (i in 2..teamsCount) {
-                    teams["team$i"] = emptyList()
-                }
-
-                roomData["teams"] = teams
-            } else {
-                // Звичайний режим: гравці у списку players
-                roomData["playersCount"] = _uiState.value.playersCount.toInt()
-                roomData["players"] = listOf(currentPlayerId)
-            }
-
-            val job = launch {
+            val firebaseJob = launch {
                 firestore.collection("gameRooms").document(roomId)
                     .set(roomData)
                     .addOnSuccessListener {
-                        _uiState.value = _uiState.value.copy(isCreating = false)
+                        updateState { it.copy(isCreating = false) }
                         onRoomCreated(roomId, currentPlayerId, true)
                     }
                     .addOnFailureListener {
-                        _uiState.value = _uiState.value.copy(
-                            isCreating = false,
-                            errorMessage = "Не вдалося створити кімнату. Спробуйте ще раз."
-                        )
+                        updateState {
+                            it.copy(
+                                isCreating = false,
+                                errorMessage = "Не вдалося створити кімнату. Спробуйте ще раз."
+                            )
+                        }
                     }
             }
 
             delay(5000L)
-            if (job.isActive) {
-                job.cancel()
-                _uiState.value = _uiState.value.copy(
-                    isCreating = false,
-                    errorMessage = "Таймаут: сервер не відповідає. Перевірте з'єднання."
-                )
+            if (firebaseJob.isActive) {
+                firebaseJob.cancel()
+                updateState {
+                    it.copy(
+                        isCreating = false,
+                        errorMessage = "Таймаут: сервер не відповідає. Перевірте з'єднання."
+                    )
+                }
             }
         }
+    }
+
+    private fun buildRoomData(roomId: String, playerId: String, isTournament: Boolean): Map<String, Any> {
+        val state = uiState.value
+        return buildMap {
+            put("roomId", roomId)
+            put("gameDuration", state.gameDuration.toInt())
+            put("type", if (isTournament) "tournament" else "free")
+
+            if (isTournament) {
+                val teamsCount = state.teamsCount.toInt()
+                val playersPerTeam = state.playersPerTeam.toInt()
+                put("teamsCount", teamsCount)
+                put("playersPerTeam", playersPerTeam)
+
+                val teams = (1..teamsCount).associate { i ->
+                    "team$i" to if (i == 1) listOf(playerId) else emptyList()
+                }
+
+                put("teams", teams)
+            } else {
+                put("playersCount", state.playersCount.toInt())
+                put("players", listOf(playerId))
+            }
+        }
+    }
+
+    private fun validateInputs(): Boolean {
+        val state = uiState.value
+        return when (state.type) {
+            GameType.TOURNAMENT -> {
+                val teams = state.teamsCount.toIntOrNull()
+                val perTeam = state.playersPerTeam.toIntOrNull()
+                val duration = state.gameDuration.toIntOrNull()
+
+                when {
+                    teams == null || teams < 2 -> showError("Teams count must be at least 2")
+                    perTeam == null || perTeam < 1 -> showError("Players per team must be at least 1")
+                    duration == null || duration < 1 -> showError("Game duration must be at least 1")
+                    else -> true
+                }
+            }
+
+            GameType.FREE -> {
+                val count = state.playersCount.toIntOrNull()
+                val duration = state.gameDuration.toIntOrNull()
+
+                when {
+                    count == null || count < 2 -> showError("Players count must be at least 2")
+                    duration == null || duration < 1 -> showError("Game duration must be at least 1")
+                    else -> true
+                }
+            }
+        }
+    }
+
+    private fun showError(message: String): Boolean {
+        updateState { it.copy(errorMessage = message) }
+        return false
+    }
+
+    private fun updateState(update: (CreateGameUiState) -> CreateGameUiState) {
+        _uiState.value = update(_uiState.value)
     }
 
     private suspend fun generateUniqueRoomId(): String {
@@ -106,8 +139,7 @@ class CreateGameViewModel : ViewModel() {
         var exists: Boolean
         do {
             roomId = UUID.randomUUID().toString().substring(0, 6)
-            val snapshot = firestore.collection("gameRooms").document(roomId).get().await()
-            exists = snapshot.exists()
+            exists = firestore.collection("gameRooms").document(roomId).get().await().exists()
         } while (exists)
         return roomId
     }

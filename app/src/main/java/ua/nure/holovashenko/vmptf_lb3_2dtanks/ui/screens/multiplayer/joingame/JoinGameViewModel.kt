@@ -1,11 +1,10 @@
 package ua.nure.holovashenko.vmptf_lb3_2dtanks.ui.screens.multiplayer.joingame
 
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.update
 import ua.nure.holovashenko.vmptf_lb3_2dtanks.ui.screens.multiplayer.GameType
 
 class JoinGameViewModel : ViewModel() {
@@ -15,15 +14,15 @@ class JoinGameViewModel : ViewModel() {
     private val firestore = FirebaseFirestore.getInstance()
 
     fun onRoomCodeChange(newCode: String) {
-        _uiState.value = _uiState.value.copy(roomCode = newCode, errorMessage = null)
+        _uiState.update { it.copy(roomCode = newCode, errorMessage = null) }
     }
 
     fun onGameTypeChange(type: GameType) {
-        _uiState.value = _uiState.value.copy(gameType = type, errorMessage = null)
+        _uiState.update { it.copy(gameType = type, errorMessage = null) }
     }
 
     fun onTeamNameChange(teamName: String) {
-        _uiState.value = _uiState.value.copy(teamName = teamName, errorMessage = null)
+        _uiState.update { it.copy(teamName = teamName, errorMessage = null) }
     }
 
     fun joinRoom(
@@ -31,73 +30,117 @@ class JoinGameViewModel : ViewModel() {
         onSuccess: (String, String, Boolean) -> Unit
     ) {
         val roomCode = _uiState.value.roomCode.trim()
-        if (roomCode.isBlank()) return
+        val selectedType = _uiState.value.gameType
 
-        _uiState.value = _uiState.value.copy(isJoining = true)
+        if (roomCode.isBlank()) {
+            showError("Введіть код кімнати")
+            return
+        }
+
+        _uiState.update { it.copy(isJoining = true, errorMessage = null) }
 
         val docRef = firestore.collection("gameRooms").document(roomCode)
 
         docRef.get().addOnSuccessListener { snapshot ->
             if (!snapshot.exists()) {
-                _uiState.value = _uiState.value.copy(errorMessage = "Кімната не знайдена", isJoining = false)
+                showError("Кімната не знайдена")
                 return@addOnSuccessListener
             }
 
             val roomType = snapshot.getString("type")
 
-            if (roomType == "tournament") {
-                val selectedTeam = _uiState.value.teamName.trim()
-                if (selectedTeam.isBlank()) {
-                    _uiState.value = _uiState.value.copy(errorMessage = "Введіть назву команди", isJoining = false)
-                    return@addOnSuccessListener
-                }
-
-                val playersPerTeam = (snapshot.get("playersPerTeam") as? Long)?.toInt() ?: 0
-                val teamsMap = snapshot.get("teams") as? Map<String, List<String>> ?: emptyMap()
-                val currentTeam = teamsMap[selectedTeam] ?: run {
-                    _uiState.value = _uiState.value.copy(errorMessage = "Команду не знайдено", isJoining = false)
-                    return@addOnSuccessListener
-                }
-
-                if (currentTeam.contains(playerId)) {
-                    onSuccess(roomCode, playerId, true)
-                    _uiState.value = _uiState.value.copy(isJoining = false)
-                    return@addOnSuccessListener
-                }
-
-                if (currentTeam.size >= playersPerTeam) {
-                    _uiState.value = _uiState.value.copy(errorMessage = "Команда вже заповнена", isJoining = false)
-                    return@addOnSuccessListener
-                }
-
-                val updatedTeam = currentTeam + playerId
-                val updatedTeams = teamsMap.toMutableMap()
-                updatedTeams[selectedTeam] = updatedTeam
-
-                docRef.update("teams", updatedTeams).addOnSuccessListener {
-                    onSuccess(roomCode, playerId, true)
-                    _uiState.value = _uiState.value.copy(isJoining = false)
-                }.addOnFailureListener {
-                    _uiState.value = _uiState.value.copy(errorMessage = "Не вдалося приєднатися", isJoining = false)
-                }
-            } else {
-                val currentPlayers = (snapshot.get("players") as? List<*>)?.filterIsInstance<String>() ?: emptyList()
-
-                if (!currentPlayers.contains(playerId)) {
-                    val updatedPlayers = currentPlayers + playerId
-                    docRef.update("players", updatedPlayers).addOnSuccessListener {
-                        onSuccess(roomCode, playerId, false)
-                    }
-                } else {
-                    onSuccess(roomCode, playerId, false)
-                }
-                _uiState.value = _uiState.value.copy(isJoining = false)
+            if (roomType == null) {
+                showError("Невідомий тип кімнати")
+                return@addOnSuccessListener
             }
+
+            if ((roomType == "tournament" && selectedType != GameType.TOURNAMENT) ||
+                (roomType == "free" && selectedType != GameType.FREE)
+            ) {
+                val expected = if (roomType == "tournament") "Tournament" else "Free"
+                val actual = if (selectedType == GameType.TOURNAMENT) "Tournament" else "Free"
+                showError("Обраний режим ($actual) не відповідає типу кімнати ($expected)")
+                return@addOnSuccessListener
+            }
+
+            if (roomType == "tournament") {
+                joinTournamentRoom(docRef, snapshot.data ?: emptyMap(), playerId, onSuccess)
+            } else {
+                joinFreeRoom(docRef, snapshot.data ?: emptyMap(), playerId, onSuccess)
+            }
+
         }.addOnFailureListener {
-            _uiState.value = _uiState.value.copy(
-                errorMessage = "Помилка при підключенні",
-                isJoining = false
-            )
+            showError("Помилка при підключенні: ${it.localizedMessage}")
         }
+    }
+
+    private fun joinFreeRoom(
+        docRef: com.google.firebase.firestore.DocumentReference,
+        data: Map<String, Any>,
+        playerId: String,
+        onSuccess: (String, String, Boolean) -> Unit
+    ) {
+        val currentPlayers = (data["players"] as? List<*>)?.filterIsInstance<String>() ?: emptyList()
+
+        if (!currentPlayers.contains(playerId)) {
+            val updatedPlayers = currentPlayers + playerId
+            docRef.update("players", updatedPlayers).addOnSuccessListener {
+                onSuccess(docRef.id, playerId, false)
+                _uiState.update { it.copy(isJoining = false) }
+            }.addOnFailureListener {
+                showError("Не вдалося приєднатися")
+            }
+        } else {
+            onSuccess(docRef.id, playerId, false)
+            _uiState.update { it.copy(isJoining = false) }
+        }
+    }
+
+    private fun joinTournamentRoom(
+        docRef: com.google.firebase.firestore.DocumentReference,
+        data: Map<String, Any>,
+        playerId: String,
+        onSuccess: (String, String, Boolean) -> Unit
+    ) {
+        val teamName = _uiState.value.teamName.trim()
+        if (teamName.isBlank()) {
+            showError("Введіть назву команди"); return
+        }
+
+        val playersPerTeam = (data["playersPerTeam"] as? Long)?.toInt() ?: 0
+        val teamsMap = (data["teams"] as? Map<*, *>)?.mapNotNull {
+            val team = it.key as? String
+            val players = (it.value as? List<*>)?.filterIsInstance<String>()
+            if (team != null && players != null) team to players else null
+        }?.toMap() ?: emptyMap()
+
+        val currentTeam = teamsMap[teamName] ?: run {
+            showError("Команду не знайдено"); return
+        }
+
+        if (currentTeam.contains(playerId)) {
+            onSuccess(docRef.id, playerId, true)
+            _uiState.update { it.copy(isJoining = false) }
+            return
+        }
+
+        if (currentTeam.size >= playersPerTeam) {
+            showError("Команда вже заповнена"); return
+        }
+
+        val updatedTeams = teamsMap.toMutableMap().apply {
+            put(teamName, currentTeam + playerId)
+        }
+
+        docRef.update("teams", updatedTeams).addOnSuccessListener {
+            onSuccess(docRef.id, playerId, true)
+            _uiState.update { it.copy(isJoining = false) }
+        }.addOnFailureListener {
+            showError("Не вдалося приєднатися")
+        }
+    }
+
+    private fun showError(message: String) {
+        _uiState.update { it.copy(errorMessage = message, isJoining = false) }
     }
 }
