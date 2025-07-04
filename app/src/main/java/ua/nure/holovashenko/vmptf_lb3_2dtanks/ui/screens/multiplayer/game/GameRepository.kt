@@ -12,10 +12,25 @@ class GameRepository(private val firestore: FirebaseFirestore = FirebaseFirestor
         return firestore.collection("gameRooms").document(roomId).get().await()
     }
 
-    suspend fun updatePlayerPosition(roomId: String, playerId: String, x: Int, y: Int) {
+    suspend fun updatePlayerPosition(roomId: String, playerId: String, position: Position) {
+        val update = mapOf(
+            "positions.$playerId" to mapOf("x" to position.x, "y" to position.y)
+        )
+
         firestore.collection("gameRooms")
             .document(roomId)
-            .update("positions.$playerId", mapOf("x" to x, "y" to y))
+            .update(update)
+            .await()
+    }
+
+    suspend fun updatePlayerDirection(roomId: String, playerId: String, direction: Direction) {
+        val update = mapOf(
+            "directions.$playerId" to direction.name
+        )
+
+        firestore.collection("gameRooms")
+            .document(roomId)
+            .update(update)
             .await()
     }
 

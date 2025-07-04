@@ -1,12 +1,30 @@
 package ua.nure.holovashenko.vmptf_lb3_2dtanks.ui.screens.multiplayer.game
 
+import android.app.Application
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import ua.nure.holovashenko.vmptf_lb3_2dtanks.R
+import ua.nure.holovashenko.vmptf_lb3_2dtanks.util.SoundPlayer
+import kotlin.collections.getOrNull
 
 @Composable
 fun GameScreen(
@@ -14,7 +32,12 @@ fun GameScreen(
     currentPlayerId: String,
     onGameEnd: () -> Unit
 ) {
-    val viewModel: GameViewModel = viewModel(factory = GameViewModelFactory(roomId, currentPlayerId))
+    val context = LocalContext.current
+    val application = context.applicationContext as Application
+
+    val viewModel: GameViewModel = viewModel(
+        factory = GameViewModelFactory(application, roomId, currentPlayerId)
+    )
 
     val playerPositions by viewModel.playerPositions.collectAsState()
     val gameType by viewModel.gameType.collectAsState()
@@ -27,6 +50,7 @@ fun GameScreen(
     val gameOver by viewModel.gameOver.collectAsState()
     val map by viewModel.map.collectAsState()
     val mapLoaded by viewModel.mapLoaded.collectAsState()
+    val playerDirections by viewModel.playerDirections.collectAsState()
     val remainingTime by viewModel.remainingTime.collectAsState()
     val gridSize = 10
 
@@ -104,90 +128,236 @@ fun GameScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues),
+                .padding(paddingValues)
+                .padding(start = 24.dp, end = 24.dp, top = 48.dp),
             verticalArrangement = Arrangement.SpaceBetween
         ) {
+
             // Ігрове поле
             Column(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp)
-                    .weight(1f), // Займає весь простір, що залишився
+                    .fillMaxWidth(),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Spacer(Modifier.height(16.dp))
                 for (y in 0 until gridSize) {
-                    Row {
+                    Row(
+                        horizontalArrangement = Arrangement.Center
+                    ) {
                         for (x in 0 until gridSize) {
-                            val pos = Position(x, y)
-                            val playerHere = playerPositions.entries.find { it.value == pos }
-                            val bulletHere = bullets.find { it.position == pos }
-                            val isObstacle = map.getOrNull(y)?.getOrNull(x)?.isObstacle == true
-
-                            Box(
-                                modifier = Modifier
-                                    .size(32.dp)
-                                    .padding(2.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                when {
-                                    playerHere != null -> {
-                                        Text(
-                                            emojiForPlayer(playerHere.key),
-                                            style = MaterialTheme.typography.bodyMedium
-                                        )
-                                    }
-
-                                    bulletHere != null -> Text("🔸")
-                                    isObstacle -> Text("⬛")
-                                    else -> Text("⬜")
-                                }
-                            }
+                            GameCellContent(
+                                position = Position(x, y),
+                                playerPositions = playerPositions,
+                                playerDirections = playerDirections,
+                                bullets = bullets,
+                                map = map,
+                                currentPlayerId = currentPlayerId,
+                                teams = teams,
+                                gameType = gameType
+                            )
                         }
                     }
                 }
             }
 
             // Джойстик
-            Column(
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(bottom = 32.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
+                    .navigationBarsPadding()
+                    .padding(bottom = 16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(
-                    horizontalArrangement = Arrangement.Center,
-                    verticalAlignment = Alignment.CenterVertically
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Bottom,
+                    modifier = Modifier.padding(8.dp)
                 ) {
-                    Spacer(modifier = Modifier.width(64.dp))
-                    Button(onClick = { viewModel.move(Direction.UP) }) {
-                        Text("↑")
+
+                    DirectionButton(
+                        icon = Icons.Filled.KeyboardArrowUp,
+                        contentDescription = "Up",
+                        onClick = { viewModel.move(Direction.UP) }
+                    )
+
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        DirectionButton(
+                            icon = Icons.AutoMirrored.Filled.KeyboardArrowLeft,
+                            contentDescription = "Left",
+                            onClick = { viewModel.move(Direction.LEFT) }
+                        )
+
+                        Spacer(modifier = Modifier.width(48.dp))
+
+                        DirectionButton(
+                            icon = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                            contentDescription = "Right",
+                            onClick = { viewModel.move(Direction.RIGHT) }
+                        )
                     }
-                    Spacer(modifier = Modifier.width(64.dp))
+
+                    DirectionButton(
+                        icon = Icons.Filled.KeyboardArrowDown,
+                        contentDescription = "Down",
+                        onClick = { viewModel.move(Direction.DOWN) }
+                    )
                 }
-                Spacer(modifier = Modifier.height(8.dp))
-                Row(
-                    horizontalArrangement = Arrangement.Center,
-                    verticalAlignment = Alignment.CenterVertically
+
+                Surface(
+                    onClick = {
+                        viewModel.shoot()
+                        SoundPlayer.playShootSound(context)
+                    },
+                    shape = CircleShape,
+                    tonalElevation = 6.dp,
+                    shadowElevation = 8.dp,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier
+                        .size(104.dp)
+                        .padding(8.dp)
                 ) {
-                    Button(onClick = { viewModel.move(Direction.LEFT) }) {
-                        Text("←")
+                    Box(
+                        contentAlignment = Alignment.Center,
+                        modifier = Modifier.fillMaxSize()
+                    ) {
+                        Image(
+                            painter = painterResource(id = R.drawable.ic_fire),
+                            contentDescription = "Shoot",
+                            modifier = Modifier
+                                .size(40.dp)
+                        )
                     }
-                    Spacer(modifier = Modifier.width(16.dp))
-                    Button(onClick = { viewModel.move(Direction.DOWN) }) {
-                        Text("↓")
-                    }
-                    Spacer(modifier = Modifier.width(16.dp))
-                    Button(onClick = { viewModel.move(Direction.RIGHT) }) {
-                        Text("→")
-                    }
-                }
-                Spacer(modifier = Modifier.height(16.dp))
-                Button(onClick = { viewModel.shoot() }) {
-                    Text("Shoot")
                 }
             }
         }
     }
 }
 
+@Composable
+fun GameCellContent(
+    position: Position,
+    playerPositions: Map<String, Position>,
+    playerDirections: Map<String, Direction>,
+    bullets: List<Bullet>,
+    map: List<List<Cell>>,
+    currentPlayerId: String,
+    teams: Map<String, List<String>>,
+    gameType: String
+) {
+    val playerIdHere = playerPositions.entries.find { it.value == position }?.key
+    val bulletHere = bullets.find { it.position == position }
+    val isObstacle = map.getOrNull(position.y)?.getOrNull(position.x)?.isObstacle == true
+
+    Box(
+        modifier = Modifier
+            .size(32.dp)
+            .padding(2.dp)
+            .background(
+                when {
+                    isObstacle -> MaterialTheme.colorScheme.outlineVariant
+                    else -> MaterialTheme.colorScheme.surfaceContainer
+                },
+                shape = MaterialTheme.shapes.small
+            ),
+        contentAlignment = Alignment.Center
+    ) {
+        when {
+            playerIdHere != null -> {
+                val direction = playerDirections[playerIdHere] ?: Direction.UP
+                val color = getPlayerColor(playerIdHere, currentPlayerId, gameType, teams)
+
+                Image(
+                    painter = painterResource(id = R.drawable.tank_base),
+                    contentDescription = "Tank",
+                    colorFilter = ColorFilter.tint(color = color),
+                    modifier = Modifier
+                        .size(24.dp)
+                        .graphicsLayer { rotationZ = direction.toRotation() }
+                )
+            }
+
+            bulletHere != null -> {
+                val rotation = bulletHere.direction.toRotation()
+                val color = getPlayerColor(
+                    playerId = bulletHere.ownerId,
+                    currentPlayerId = currentPlayerId,
+                    gameType = gameType,
+                    teams = teams
+                )
+
+                Image(
+                    painter = painterResource(id = R.drawable.bullet),
+                    contentDescription = "Bullet",
+                    colorFilter = ColorFilter.tint(color = color),
+                    modifier = Modifier
+                        .size(12.dp)
+                        .graphicsLayer { rotationZ = rotation }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun DirectionButton(
+    icon: ImageVector,
+    contentDescription: String,
+    onClick: () -> Unit
+) {
+    Surface(
+        onClick = onClick,
+        shape = CircleShape,
+        tonalElevation = 4.dp,
+        shadowElevation = 6.dp,
+        color = MaterialTheme.colorScheme.secondaryContainer,
+        modifier = Modifier
+            .size(56.dp)
+            .padding(4.dp)
+    ) {
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier = Modifier
+                .fillMaxSize()
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = contentDescription,
+                tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                modifier = Modifier.size(28.dp)
+            )
+        }
+    }
+}
+
+fun Direction.toRotation(): Float = when (this) {
+    Direction.UP -> 0f
+    Direction.RIGHT -> 90f
+    Direction.DOWN -> 180f
+    Direction.LEFT -> 270f
+}
+
+@Composable
+fun getPlayerColor(
+    playerId: String,
+    currentPlayerId: String,
+    gameType: String,
+    teams: Map<String, List<String>>
+): Color {
+    return when {
+        gameType == "free" && playerId == currentPlayerId -> MaterialTheme.colorScheme.primary
+        gameType == "free" -> MaterialTheme.colorScheme.error
+        else -> {
+            val team = teams.entries.find { it.value.contains(playerId) }?.key
+            when (team.hashCode() % 5) {
+                0 -> MaterialTheme.colorScheme.primary
+                1 -> MaterialTheme.colorScheme.tertiary
+                2 -> MaterialTheme.colorScheme.secondary
+                3 -> MaterialTheme.colorScheme.error
+                else -> MaterialTheme.colorScheme.inversePrimary
+            }
+        }
+    }
+}

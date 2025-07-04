@@ -1,6 +1,7 @@
 package ua.nure.holovashenko.vmptf_lb3_2dtanks.ui.screens.multiplayer.game
 
-import androidx.lifecycle.ViewModel
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.Dispatchers
@@ -8,6 +9,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import ua.nure.holovashenko.vmptf_lb3_2dtanks.util.SoundPlayer
 import java.util.Date
 
 data class Position(val x: Int, val y: Int)
@@ -17,10 +19,11 @@ data class Cell(val x: Int, val y: Int, val isObstacle: Boolean)
 typealias GameMap = List<List<Cell>>
 
 class GameViewModel(
+    application: Application,
     private val roomId: String,
     private val currentPlayerId: String,
     private val repository: GameRepository = GameRepository()
-) : ViewModel() {
+) : AndroidViewModel(application) {
 
     private var startTime: Long = System.currentTimeMillis()
     private val gridSize = 10
@@ -48,6 +51,9 @@ class GameViewModel(
 
     private val _remainingTime = MutableStateFlow(180)
     val remainingTime: StateFlow<Int> = _remainingTime.asStateFlow()
+
+    private val _playerDirections = MutableStateFlow<Map<String, Direction>>(emptyMap())
+    val playerDirections: StateFlow<Map<String, Direction>> = _playerDirections.asStateFlow()
 
     private val _kills = mutableMapOf<String, Int>()
     private var lastDirection: Direction = Direction.UP
@@ -100,6 +106,14 @@ class GameViewModel(
         if (_playerPositions.value != positionsMap) {
             _playerPositions.value = positionsMap
         }
+
+        val directionMap = (data["directions"] as? Map<*, *>)?.mapNotNull { (key, value) ->
+            val uid = key as? String ?: return@mapNotNull null
+            val dir = (value as? String)?.let { Direction.valueOf(it) } ?: return@mapNotNull null
+            uid to dir
+        }?.toMap() ?: emptyMap()
+
+        _playerDirections.value = directionMap
 
         if (playerTeam == null) {
             val teamMap = data["teams"] as? Map<String, List<String>>
@@ -170,9 +184,12 @@ class GameViewModel(
                 Direction.RIGHT -> currentPos.copy(x = (currentPos.x + 1).coerceAtMost(gridSize - 1))
             }
 
+            lastDirection = direction
+            _playerDirections.update { it.toMutableMap().apply { put(currentPlayerId, direction) } }
+            repository.updatePlayerDirection(roomId, currentPlayerId, direction)
+
             val mapSnapshot = _map.value
             val targetCell = mapSnapshot.getOrNull(newPos.y)?.getOrNull(newPos.x)
-
             if (targetCell?.isObstacle == true) return@launch
 
             val isOccupied = _playerPositions.value.any { (id, pos) ->
@@ -180,9 +197,7 @@ class GameViewModel(
             }
             if (isOccupied) return@launch
 
-            repository.updatePlayerPosition(roomId, currentPlayerId, newPos.x, newPos.y)
-
-            lastDirection = direction
+            repository.updatePlayerPosition(roomId, currentPlayerId, newPos)
         }
     }
 
@@ -327,6 +342,9 @@ class GameViewModel(
 
     private fun registerKill(killerId: String, victimId: String) {
         viewModelScope.launch {
+            val appContext = getApplication<Application>()
+            SoundPlayer.playRandomHitSound(appContext)
+
             val snapshot = repository.fetchRoom(roomId) ?: return@launch
             val data = snapshot.data ?: return@launch
             val aliveStatus = (data["aliveStatus"] as? Map<String, Boolean>)?.toMutableMap() ?: return@launch
