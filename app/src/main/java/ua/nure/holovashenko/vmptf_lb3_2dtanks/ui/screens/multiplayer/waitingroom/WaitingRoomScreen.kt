@@ -5,7 +5,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ExitToApp
+import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -27,10 +27,10 @@ fun WaitingRoomScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val clipboardManager = LocalClipboardManager.current
-    val snackbarHostState = remember { SnackbarHostState() }
+    val snackBarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
+    val isRoomFull = viewModel.isRoomFull()
 
-    // Спостерігати за кімнатою тільки якщо не повернулись з гри
     if (!fromGame) {
         LaunchedEffect(roomId) {
             viewModel.observeRoom(
@@ -39,7 +39,6 @@ fun WaitingRoomScreen(
             )
         }
     } else {
-        // Навіть якщо повернулись з гри, перевірити чи нас ще не видалили з кімнати
         LaunchedEffect(roomId) {
             viewModel.observeRoomMinimal(roomId) {
                 onNavigateToMain()
@@ -68,7 +67,7 @@ fun WaitingRoomScreen(
                         modifier = Modifier.clickable {
                             clipboardManager.setText(androidx.compose.ui.text.AnnotatedString(roomId))
                             coroutineScope.launch {
-                                snackbarHostState.showSnackbar("Room ID copied")
+                                snackBarHostState.showSnackbar("Room ID copied")
                             }
                         }
                     ) {
@@ -87,20 +86,24 @@ fun WaitingRoomScreen(
                             onError = { /* TODO */ }
                         )
                     }) {
-                        Icon(Icons.Default.ExitToApp, contentDescription = "Exit")
+                        Icon(Icons.AutoMirrored.Filled.ExitToApp, contentDescription = "Exit")
                     }
                 }
             )
         },
-        snackbarHost = { SnackbarHost(hostState = snackbarHostState) }
+        snackbarHost = { SnackbarHost(hostState = snackBarHostState) }
     ) { padding ->
         Column(
             modifier = Modifier
                 .padding(padding)
-                .padding(16.dp)
+                .padding(horizontal = 24.dp)
                 .fillMaxSize()
         ) {
-            Text("Waiting for players...", style = MaterialTheme.typography.headlineSmall)
+            Text(
+                text = if (isRoomFull) "Room is full. Ready to start!" else "Waiting for players...",
+                style = MaterialTheme.typography.headlineSmall
+            )
+
             Spacer(Modifier.height(16.dp))
 
             LazyColumn(
@@ -108,7 +111,6 @@ fun WaitingRoomScreen(
                 modifier = Modifier.weight(1f)
             ) {
                 if (uiState.roomType == "tournament") {
-                    // Відображаємо навіть пусті команди
                     val allTeams = uiState.teamPlayers.keys.union(uiState.teamEmails.keys)
 
                     allTeams.forEach { teamName ->
@@ -122,7 +124,10 @@ fun WaitingRoomScreen(
                             items(emails) { email ->
                                 Card(
                                     modifier = Modifier.fillMaxWidth(),
-                                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+                                    shape = MaterialTheme.shapes.medium,
+                                    colors = CardDefaults.cardColors(
+                                        containerColor = MaterialTheme.colorScheme.primaryContainer
+                                    )
                                 ) {
                                     Text(
                                         text = email,
@@ -152,7 +157,8 @@ fun WaitingRoomScreen(
                     items(uiState.playerEmails) { email ->
                         Card(
                             modifier = Modifier.fillMaxWidth(),
-                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+                            shape = MaterialTheme.shapes.medium,
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
                         ) {
                             Text(
                                 text = email,
@@ -166,14 +172,21 @@ fun WaitingRoomScreen(
 
             uiState.errorMessage?.let {
                 Spacer(modifier = Modifier.height(12.dp))
-                Text(it, color = MaterialTheme.colorScheme.error)
+                Text(
+                    text = it,
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodyMedium
+                )
             }
 
             if (uiState.playerIds.firstOrNull() == currentPlayerId && !uiState.gameStarted) {
-                Spacer(Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(16.dp))
                 Button(
                     onClick = { viewModel.startGame(roomId) },
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(56.dp),
+                    shape = MaterialTheme.shapes.large
                 ) {
                     Text("Start Game")
                 }

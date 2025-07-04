@@ -113,6 +113,7 @@ fun CreateGameScreen(
 
             Button(
                 onClick = { viewModel.createRoom(currentPlayerId, onRoomCreated) },
+                shape = MaterialTheme.shapes.large,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(56.dp),

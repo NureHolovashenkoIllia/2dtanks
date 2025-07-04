@@ -1,6 +1,7 @@
 package ua.nure.holovashenko.vmptf_lb3_2dtanks.ui.screens.multiplayer.waitingroom
 
 import androidx.lifecycle.ViewModel
+import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FieldPath
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ListenerRegistration
@@ -19,84 +20,104 @@ class WaitingRoomViewModel : ViewModel() {
         val docRef = firestore.collection("gameRooms").document(roomId)
 
         listenerRegistration = docRef.addSnapshotListener { snapshot, _ ->
-            if (snapshot != null && snapshot.exists()) {
-                val type = snapshot.getString("type") ?: "free"
-
-                if (type == "tournament") {
-                    val teams = snapshot.get("teams") as? Map<*, *> ?: emptyMap<Any?, Any?>()
-                    val teamMap = mutableMapOf<String, List<String>>()
-
-                    teams.forEach { (teamName, playerList) ->
-                        val players = (playerList as? List<*>)?.filterIsInstance<String>() ?: emptyList()
-                        teamMap[teamName.toString()] = players
-                    }
-
-                    val allPlayerIds = teamMap.values.flatten().distinct()
-                    _uiState.value = _uiState.value.copy(
-                        playerIds = allPlayerIds,
-                        roomType = "tournament",
-                        teamPlayers = teamMap
-                    )
-
-                    if (allPlayerIds.isNotEmpty()) {
-                        firestore.collection("users")
-                            .whereIn(FieldPath.documentId(), allPlayerIds)
-                            .get()
-                            .addOnSuccessListener { result ->
-                                val emailMap = result.documents.associateBy({ it.id }, { it.getString("email") ?: "Невідомо" })
-                                val teamEmails = teamMap.mapValues { entry ->
-                                    entry.value.map { emailMap[it] ?: "Невідомо" }
-                                }
-                                _uiState.value = _uiState.value.copy(teamEmails = teamEmails)
-                            }
-                    }
-                } else {
-                    val uids = snapshot.get("players") as? List<*> ?: emptyList<String>()
-                    val playerIds = uids.filterIsInstance<String>()
-
-                    _uiState.value = _uiState.value.copy(playerIds = playerIds, roomType = "free")
-
-                    if (playerIds.isNotEmpty()) {
-                        firestore.collection("users")
-                            .whereIn(FieldPath.documentId(), playerIds)
-                            .get()
-                            .addOnSuccessListener { result ->
-                                val emails = result.documents.map { it.getString("email") ?: "Невідомо" }
-                                _uiState.value = _uiState.value.copy(playerEmails = emails)
-                            }
-                    } else {
-                        docRef.delete()
-                        onRoomClosed()
-                    }
-                }
-
-                val started = snapshot.getBoolean("gameStarted") ?: false
-                _uiState.value = _uiState.value.copy(gameStarted = started)
-            } else {
+            if (snapshot == null || !snapshot.exists()) {
                 onRoomClosed()
+                return@addSnapshotListener
+            }
+
+            val type = snapshot.getString("type") ?: "free"
+            val gameStarted = snapshot.getBoolean("gameStarted") == true
+            _uiState.value = _uiState.value.copy(gameStarted = gameStarted)
+
+            if (type == "tournament") {
+                handleTournamentRoom(snapshot)
+            } else {
+                handleFreeRoom(snapshot, onRoomClosed)
             }
         }
+    }
+
+    private fun handleTournamentRoom(snapshot: DocumentSnapshot) {
+        val teamsRaw = snapshot.get("teams") as? Map<*, *> ?: return
+        val teamMap = teamsRaw.mapNotNull { (key, value) ->
+            val teamName = key?.toString()
+            val players = (value as? List<*>)?.filterIsInstance<String>()
+            if (teamName != null && players != null) teamName to players else null
+        }.toMap()
+
+        val playerIds = teamMap.values.flatten().distinct()
+        val playersPerTeam = (snapshot.get("playersPerTeam") as? Long)?.toInt() ?: 0
+        val teamsCount = (snapshot.get("teamsCount") as? Long)?.toInt() ?: 0
+
+        _uiState.value = _uiState.value.copy(
+            roomType = "tournament",
+            teamPlayers = teamMap,
+            playerIds = playerIds,
+            playersPerTeam = playersPerTeam,
+            teamsCount = teamsCount
+        )
+
+        if (playerIds.isNotEmpty()) {
+            fetchPlayerEmails(playerIds) { emailMap ->
+                val teamEmails = teamMap.mapValues { entry ->
+                    entry.value.map { playerId -> emailMap[playerId] ?: "Unknown" }
+                }
+                _uiState.value = _uiState.value.copy(teamEmails = teamEmails)
+            }
+        }
+    }
+
+    private fun handleFreeRoom(snapshot: DocumentSnapshot, onRoomClosed: () -> Unit) {
+        val playerIds = (snapshot.get("players") as? List<*>)?.filterIsInstance<String>().orEmpty()
+        val playersCount = (snapshot.get("playersCount") as? Long)?.toInt() ?: 0
+
+        _uiState.value = _uiState.value.copy(
+            roomType = "free",
+            playerIds = playerIds,
+            playersCount = playersCount
+        )
+
+        if (playerIds.isEmpty()) {
+            snapshot.reference.delete()
+            onRoomClosed()
+        } else {
+            fetchPlayerEmails(playerIds) { emailMap ->
+                val emails = playerIds.map { emailMap[it] ?: "Unknown" }
+                _uiState.value = _uiState.value.copy(playerEmails = emails)
+            }
+        }
+    }
+
+    private fun fetchPlayerEmails(playerIds: List<String>, onResult: (Map<String, String>) -> Unit) {
+        firestore.collection("users")
+            .whereIn(FieldPath.documentId(), playerIds)
+            .get()
+            .addOnSuccessListener { result ->
+                val emailMap = result.documents.associate {
+                    it.id to (it.getString("nickname") ?: "Unknown")
+                }
+                onResult(emailMap)
+            }
     }
 
     fun observeRoomMinimal(roomId: String, onRoomClosed: () -> Unit) {
         removeListener()
-        val docRef = firestore.collection("gameRooms").document(roomId)
-
-        listenerRegistration = docRef.addSnapshotListener { snapshot, _ ->
-            if (snapshot == null || !snapshot.exists()) {
-                onRoomClosed()
+        listenerRegistration = firestore.collection("gameRooms")
+            .document(roomId)
+            .addSnapshotListener { snapshot, _ ->
+                if (snapshot == null || !snapshot.exists()) onRoomClosed()
             }
-        }
     }
 
     fun addPlayerIfNeeded(roomId: String, playerId: String) {
-        val docRef = firestore.collection("gameRooms").document(roomId)
-        docRef.get().addOnSuccessListener { snapshot ->
-            val currentPlayers = (snapshot.get("players") as? List<*>)?.filterIsInstance<String>() ?: emptyList()
-            if (!currentPlayers.contains(playerId)) {
-                docRef.update("players", currentPlayers + playerId)
+        firestore.collection("gameRooms").document(roomId)
+            .get()
+            .addOnSuccessListener { snapshot ->
+                val players = (snapshot.get("players") as? List<*>)?.filterIsInstance<String>() ?: emptyList()
+                if (!players.contains(playerId)) {
+                    snapshot.reference.update("players", players + playerId)
+                }
             }
-        }
     }
 
     fun startGame(roomId: String) {
@@ -104,45 +125,38 @@ class WaitingRoomViewModel : ViewModel() {
         val aliveMap = _uiState.value.playerIds.associateWith { true }
 
         roomRef.get().addOnSuccessListener { snapshot ->
-            if (snapshot.get("type") as? String == "free") {
-                val currentPlayers = (snapshot.get("players") as? List<*>)?.filterIsInstance<String>() ?: emptyList()
-                if (currentPlayers.size >= 2) {
-                    roomRef.update(
-                        mapOf(
-                            "aliveStatus" to aliveMap,
-                            "gameStarted" to true
+            when (snapshot.getString("type")) {
+                "free" -> {
+                    val players = (snapshot.get("players") as? List<*>)?.filterIsInstance<String>() ?: emptyList()
+                    if (players.size < 2) {
+                        _uiState.value = _uiState.value.copy(
+                            errorMessage = "At least two players are required to start the game."
                         )
-                    )
-                } else {
-                    _uiState.value = _uiState.value.copy(errorMessage = "At least two players are required to start the game.", gameStarted = false)
-                    return@addOnSuccessListener
-                }
-            } else if (snapshot.get("type") as? String == "tournament") {
-                val teams = snapshot.get("teams") as? Map<*, *> ?: emptyMap<Any?, Any?>()
-                val teamMap = mutableMapOf<String, List<String>>()
-                var counter = 0
-
-                teams.forEach { (teamName, playerList) ->
-                    val players = (playerList as? List<*>)?.filterIsInstance<String>() ?: emptyList()
-                    if (players.isNotEmpty()) {
-                        counter++
+                        return@addOnSuccessListener
                     }
                 }
-                if (counter == teams.size) {
-                    roomRef.update(
-                        mapOf(
-                            "aliveStatus" to aliveMap,
-                            "gameStarted" to true
+
+                "tournament" -> {
+                    val teams = snapshot.get("teams") as? Map<*, *> ?: emptyMap<Any?, Any?>()
+                    val anyTeamEmpty = teams.any { (_, value) ->
+                        (value as? List<*>)?.filterIsInstance<String>().isNullOrEmpty()
+                    }
+                    if (anyTeamEmpty) {
+                        _uiState.value = _uiState.value.copy(
+                            errorMessage = "Each team must have at least one player."
                         )
-                    )
-                } else {
-                    _uiState.value = _uiState.value.copy(errorMessage = "Each team must have at least one participant to start the game.", gameStarted = false)
-                    return@addOnSuccessListener
+                        return@addOnSuccessListener
+                    }
                 }
             }
+
+            roomRef.update(
+                mapOf(
+                    "aliveStatus" to aliveMap,
+                    "gameStarted" to true
+                )
+            )
         }
-
-
     }
 
     fun leaveRoom(
@@ -155,10 +169,10 @@ class WaitingRoomViewModel : ViewModel() {
 
         firestore.runTransaction { transaction ->
             val snapshot = transaction.get(roomRef)
-            if (!snapshot.exists()) throw Exception("Кімната не існує")
+            if (!snapshot.exists()) throw Exception("Room not found")
 
             val players = (snapshot.get("players") as? List<*>)?.filterIsInstance<String>() ?: emptyList()
-            val updatedPlayers = players.filterNot { it == playerId }
+            val updatedPlayers = players - playerId
 
             if (updatedPlayers.isEmpty()) {
                 transaction.delete(roomRef)
@@ -166,7 +180,24 @@ class WaitingRoomViewModel : ViewModel() {
                 transaction.update(roomRef, "players", updatedPlayers)
             }
         }.addOnSuccessListener { onSuccess() }
-            .addOnFailureListener { onError(it.localizedMessage ?: "Помилка") }
+            .addOnFailureListener { e -> onError(e.localizedMessage ?: "Leave failed") }
+    }
+
+    fun isRoomFull(): Boolean {
+        return when (uiState.value.roomType) {
+            "tournament" -> {
+                val teamPlayers = uiState.value.teamPlayers
+                val expectedTeams = uiState.value.teamsCount
+                val expectedPlayers = uiState.value.playersPerTeam
+
+                teamPlayers.size == expectedTeams &&
+                        teamPlayers.values.all { it.size >= expectedPlayers }
+            }
+            "free" -> {
+                uiState.value.playerIds.size >= uiState.value.playersCount
+            }
+            else -> false
+        }
     }
 
     fun removeListener() {

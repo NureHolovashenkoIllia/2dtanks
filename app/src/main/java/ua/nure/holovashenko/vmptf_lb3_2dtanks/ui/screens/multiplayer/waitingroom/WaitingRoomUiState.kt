@@ -7,5 +7,8 @@ data class WaitingRoomUiState(
     val roomType: String = "free", // "free" або "tournament"
     val teamPlayers: Map<String, List<String>> = emptyMap(), // команда -> список id
     val teamEmails: Map<String, List<String>> = emptyMap(),  // команда -> список email
+    val playersCount: Int = 0,
+    val playersPerTeam: Int = 0,
+    val teamsCount: Int = 0,
     val errorMessage: String? = null
 )

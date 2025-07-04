@@ -1,7 +1,6 @@
 package ua.nure.holovashenko.vmptf_lb3_2dtanks.ui.screens.leaderboard
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -131,7 +130,6 @@ fun LeaderboardTable(players: List<PlayerStatistic>) {
                 color = MaterialTheme.colorScheme.surfaceContainer,
                 shape = MaterialTheme.shapes.small
             )
-            .border(1.dp, MaterialTheme.colorScheme.outline, MaterialTheme.shapes.small)
     ) {
         item {
             Row(

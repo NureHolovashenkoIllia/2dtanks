@@ -88,6 +88,7 @@ fun JoinGameScreen(
                     viewModel.joinRoom(currentPlayerId, onJoinSuccess)
                 },
                 enabled = !uiState.isJoining,
+                shape = MaterialTheme.shapes.large,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(56.dp)
