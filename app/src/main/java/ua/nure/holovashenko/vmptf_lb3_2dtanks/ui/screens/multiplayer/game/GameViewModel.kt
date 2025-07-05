@@ -18,6 +18,9 @@ data class Bullet(val ownerId: String, val position: Position, val direction: Di
 data class Cell(val x: Int, val y: Int, val isObstacle: Boolean)
 typealias GameMap = List<List<Cell>>
 
+data class GameResult(val kills: Int, val result: ResultType)
+enum class ResultType { WIN, LOSE, DRAW }
+
 class GameViewModel(
     application: Application,
     private val roomId: String,
@@ -61,6 +64,7 @@ class GameViewModel(
     private var playerTeam: String? = null
     private var hasGameEnded = false
     private var wasAlive = true
+    private var timerStarted = false
     private var latestSnapshot: Map<String, Any> = emptyMap()
 
     private val listener = FirebaseFirestore.getInstance()
@@ -82,7 +86,8 @@ class GameViewModel(
 
     private fun handleSnapshot(data: Map<String, Any>) {
         latestSnapshot = data
-        val aliveStatus = (data["aliveStatus"] as? Map<*, *>)?.mapValues { it.value as Boolean } ?: return
+        val aliveStatus =
+            (data["aliveStatus"] as? Map<*, *>)?.mapValues { it.value as Boolean } ?: return
 
         val type = data["type"] as? String ?: "free"
         _gameType.value = type
@@ -93,6 +98,12 @@ class GameViewModel(
             if (playerTeam == null) {
                 playerTeam = teamMap.entries.find { it.value.contains(currentPlayerId) }?.key
             }
+        }
+
+        val gameStartTimestamp = data["gameStartTimestamp"] as? Long
+        if (gameStartTimestamp != null && !timerStarted) {
+            timerStarted = true
+            startSynchronizedTimer(gameStartTimestamp)
         }
 
         val positionsMap = (data["positions"] as? Map<*, *>)?.mapNotNull { (key, value) ->
@@ -144,38 +155,73 @@ class GameViewModel(
 
     private suspend fun fetchGameDuration() {
         val snapshot = repository.fetchRoom(roomId) ?: return
-        val duration = (snapshot.getLong("gameDuration") ?: 180).toInt()
-        _remainingTime.value = duration * 60
+        val data = snapshot.data ?: return
 
-        viewModelScope.launch {
-            while (_remainingTime.value > 0 && !_gameOver.value) {
-                delay(1000)
-                _remainingTime.value -= 1
+        val firstPlayerId = getFirstPlayerId(data)
+        val isHost = firstPlayerId == currentPlayerId
+        val gameStartTimestamp = snapshot["gameStartTimestamp"] as? Long
+
+        if (gameStartTimestamp == null && isHost) {
+            val now = System.currentTimeMillis()
+            repository.setGameStartTimestamp(roomId, now)
+        }
+    }
+
+    private fun getFirstPlayerId(data: Map<String, Any>): String? {
+        return when (data["type"] as? String ?: "free") {
+            "free" -> (data["players"] as? List<*>)?.firstOrNull() as? String
+            "tournament" -> {
+                val teams = data["teams"] as? Map<*, *> ?: return null
+                teams.values.flatMap { it as? List<*> ?: emptyList<Any>() }.firstOrNull() as? String
             }
-            if (_remainingTime.value == 0) {
-                _gameOver.value = true
-                endGame(winnerId = "Draw, time is up", kills = _kills[currentPlayerId] ?: 0, won = false)
+
+            else -> null
+        }
+    }
+
+    private fun startSynchronizedTimer(gameStartTimestamp: Long) {
+        viewModelScope.launch {
+            val snapshot = repository.fetchRoom(roomId) ?: return@launch
+            val durationMinutes = (snapshot.getLong("gameDuration") ?: 180).toInt()
+            val durationSeconds = durationMinutes * 60
+
+            while (isActive && !_gameOver.value) {
+                val elapsed = ((System.currentTimeMillis() - gameStartTimestamp) / 1000).toInt()
+                val remaining = (durationSeconds - elapsed).coerceAtLeast(0)
+                _remainingTime.value = remaining
+
+                if (remaining == 0) {
+                    endGame(
+                        winnerId = "Draw, time is up",
+                        kills = _kills[currentPlayerId] ?: 0,
+                        won = false
+                    )
+                    break
+                }
+
+                delay(1000)
             }
         }
     }
 
-    fun buildGameResultText(playerId: String): String {
-        val winner = lastWinner ?: "Unknown"
-        val kills = _kills[currentPlayerId] ?: 0
-        val isWinner = winner == playerId || winner == playerTeam
+    fun buildGameResult(playerId: String): GameResult {
+        val kills = _kills[playerId] ?: 0
 
-        return buildString {
-            appendLine("Game over!")
-            appendLine("Winner: $winner")
-            appendLine("Your kills: $kills")
-            appendLine(if (isWinner) "\n You win!" else "\n You lose.")
+        return when (lastWinner) {
+            null -> GameResult(kills, ResultType.LOSE)
+            "Draw, time is up" -> GameResult(kills, ResultType.DRAW)
+            playerId, playerTeam -> GameResult(kills, ResultType.WIN)
+            else -> GameResult(kills, ResultType.LOSE)
         }
     }
 
     fun move(direction: Direction) {
         viewModelScope.launch {
-            val currentPosMap = (latestSnapshot["positions"] as? Map<*, *>)?.get(currentPlayerId) as? Map<*, *> ?: return@launch
-            val currentPos = Position((currentPosMap["x"] as Long).toInt(), (currentPosMap["y"] as Long).toInt())
+            val currentPosMap =
+                (latestSnapshot["positions"] as? Map<*, *>)?.get(currentPlayerId) as? Map<*, *>
+                    ?: return@launch
+            val currentPos =
+                Position((currentPosMap["x"] as Long).toInt(), (currentPosMap["y"] as Long).toInt())
 
             val newPos = when (direction) {
                 Direction.UP -> currentPos.copy(y = (currentPos.y - 1).coerceAtLeast(0))
@@ -203,8 +249,11 @@ class GameViewModel(
 
     fun shoot() {
         viewModelScope.launch {
-            val positionMap = ((latestSnapshot["positions"] as? Map<*, *>)?.get(currentPlayerId)) as? Map<*, *> ?: return@launch
-            val shooterPos = Position((positionMap["x"] as Long).toInt(), (positionMap["y"] as Long).toInt())
+            val positionMap =
+                ((latestSnapshot["positions"] as? Map<*, *>)?.get(currentPlayerId)) as? Map<*, *>
+                    ?: return@launch
+            val shooterPos =
+                Position((positionMap["x"] as Long).toInt(), (positionMap["y"] as Long).toInt())
             val direction = lastDirection
 
             val newBullet = mapOf(
@@ -213,7 +262,8 @@ class GameViewModel(
                 "direction" to direction.name
             )
 
-            val currentBullets = latestSnapshot["bullets"] as? List<Map<String, Any?>> ?: emptyList()
+            val currentBullets =
+                latestSnapshot["bullets"] as? List<Map<String, Any?>> ?: emptyList()
             val updatedBullets = currentBullets + newBullet
 
             repository.updateBullets(roomId, updatedBullets)
@@ -222,25 +272,20 @@ class GameViewModel(
 
     private suspend fun ensureMapCreatedOnce() {
         val snapshot = repository.fetchRoom(roomId) ?: return
+        val data = snapshot.data ?: return
         val mapExists = snapshot.contains("map")
-        val players = when (latestSnapshot["type"]) {
-            "free" -> snapshot.get("players") as? List<*> ?: emptyList<String>()
-            "tournament" -> {
-                val teamsMap = snapshot.get("teams") as? Map<*, *> ?: emptyMap<String, List<String>>()
-                teamsMap.values.flatMap { it as? List<*> ?: emptyList<Any>() }
-            }
-            else -> emptyList<Any>()
-        }
-        val isHost = players.firstOrNull() == currentPlayerId
+
+        val firstPlayerId = getFirstPlayerId(data)
+        val isHost = firstPlayerId == currentPlayerId
 
         if (!mapExists && isHost) {
             repository.updateMap(roomId, gridSize)
         }
 
         repeat(10) {
-            val fresh = repository.fetchRoom(roomId)
+            val fresh = repository.fetchRoom(roomId)?.data
             val mapDataRaw = fresh?.get("map") as? Map<*, *>
-            if (mapDataRaw != null && mapDataRaw.isNotEmpty()) {
+            if (!mapDataRaw.isNullOrEmpty()) {
                 val mapData = List(gridSize) { y ->
                     List(gridSize) { x ->
                         val key = "$x,$y"
@@ -269,15 +314,21 @@ class GameViewModel(
         FirebaseFirestore.getInstance().collection("gameRooms").document(roomId).get()
             .addOnSuccessListener { snapshot ->
                 val data = snapshot.data ?: return@addOnSuccessListener
-                val bullets = (data["bullets"] as? List<Map<String, Any?>>)?.mapNotNull { bulletMap ->
-                    val ownerId = bulletMap["ownerId"] as? String ?: return@mapNotNull null
-                    val posMap = bulletMap["position"] as? Map<*, *> ?: return@mapNotNull null
-                    val dirStr = bulletMap["direction"] as? String ?: return@mapNotNull null
-                    Bullet(ownerId, Position((posMap["x"] as Long).toInt(), (posMap["y"] as Long).toInt()), Direction.valueOf(dirStr))
-                } ?: return@addOnSuccessListener
+                val bullets =
+                    (data["bullets"] as? List<Map<String, Any?>>)?.mapNotNull { bulletMap ->
+                        val ownerId = bulletMap["ownerId"] as? String ?: return@mapNotNull null
+                        val posMap = bulletMap["position"] as? Map<*, *> ?: return@mapNotNull null
+                        val dirStr = bulletMap["direction"] as? String ?: return@mapNotNull null
+                        Bullet(
+                            ownerId,
+                            Position((posMap["x"] as Long).toInt(), (posMap["y"] as Long).toInt()),
+                            Direction.valueOf(dirStr)
+                        )
+                    } ?: return@addOnSuccessListener
 
                 val positionsMap = data["positions"] as? Map<*, *> ?: return@addOnSuccessListener
-                val aliveStatus = data["aliveStatus"] as? Map<String, Boolean> ?: return@addOnSuccessListener
+                val aliveStatus =
+                    data["aliveStatus"] as? Map<String, Boolean> ?: return@addOnSuccessListener
                 val type = data["type"] as? String ?: "free"
                 val teams = if (type == "tournament") {
                     data["teams"] as? Map<String, List<String>> ?: emptyMap()
@@ -301,13 +352,15 @@ class GameViewModel(
                     val hit = positionsMap.entries.find { (key, value) ->
                         val uid = key as? String ?: return@find false
                         val pos = value as? Map<*, *> ?: return@find false
-                        val posObj = Position((pos["x"] as Long).toInt(), (pos["y"] as Long).toInt())
+                        val posObj =
+                            Position((pos["x"] as Long).toInt(), (pos["y"] as Long).toInt())
 
                         val isAlive = aliveStatus[uid] == true
                         if (!isAlive || posObj != newPos) return@find false
 
                         if (type == "tournament") {
-                            val shooterTeam = teams.entries.find { it.value.contains(bullet.ownerId) }?.key
+                            val shooterTeam =
+                                teams.entries.find { it.value.contains(bullet.ownerId) }?.key
                             val targetTeam = teams.entries.find { it.value.contains(uid) }?.key
                             shooterTeam != null && shooterTeam != targetTeam
                         } else {
@@ -347,14 +400,17 @@ class GameViewModel(
 
             val snapshot = repository.fetchRoom(roomId) ?: return@launch
             val data = snapshot.data ?: return@launch
-            val aliveStatus = (data["aliveStatus"] as? Map<String, Boolean>)?.toMutableMap() ?: return@launch
 
+            val aliveStatus =
+                (data["aliveStatus"] as? Map<String, Boolean>)?.toMutableMap() ?: return@launch
             aliveStatus[victimId] = false
             repository.updateAliveStatus(roomId, aliveStatus)
 
             _kills[killerId] = (_kills[killerId] ?: 0) + 1
 
             val type = data["type"] as? String ?: "free"
+            val remainingAlive = aliveStatus.filterValues { it }.keys
+
             if (type == "tournament") {
                 val teams = data["teams"] as? Map<String, List<String>> ?: return@launch
 
@@ -374,12 +430,19 @@ class GameViewModel(
                     )
                 }
             } else {
-                val remainingAlive = aliveStatus.filterValues { it }.keys
-                if (remainingAlive.size == 1 && remainingAlive.contains(currentPlayerId)) {
-                    endGame(currentPlayerId, kills = _kills[currentPlayerId] ?: 0, won = true)
-                } else if (remainingAlive.size <= 1 && !remainingAlive.contains(currentPlayerId)) {
+                if (remainingAlive.size == 1 && remainingAlive.contains(killerId) && killerId == currentPlayerId) {
+                    endGame(
+                        winnerId = killerId,
+                        kills = _kills[killerId] ?: 0,
+                        won = killerId == currentPlayerId
+                    )
+                } else if (remainingAlive.size <= 1 && !remainingAlive.contains(currentPlayerId) && killerId == currentPlayerId) {
                     val winnerId = remainingAlive.firstOrNull()
-                    endGame(winnerId = winnerId, kills = _kills[currentPlayerId] ?: 0, won = false)
+                    endGame(
+                        winnerId = winnerId,
+                        kills = _kills[killerId] ?: 0,
+                        won = winnerId == currentPlayerId
+                    )
                 }
             }
         }
@@ -393,13 +456,17 @@ class GameViewModel(
             val snapshot = repository.fetchRoom(roomId) ?: return@launch
             val data = snapshot.data ?: return@launch
             val aliveStatus = (data["aliveStatus"] as? Map<String, Boolean>) ?: emptyMap()
-
             val alivePlayers = aliveStatus.filterValues { it }.keys
-            val isLastAlive = alivePlayers.size == 1 && alivePlayers.first() == currentPlayerId
 
-            if (isLastAlive) {
-                val type = data["type"] as? String ?: "free"
-                val isTournament = type == "tournament"
+            val type = data["type"] as? String ?: "free"
+            val isTournament = type == "tournament"
+
+            val isDraw = winnerId == "Draw, time is up"
+            val isLastAlive = alivePlayers.size == 1 && alivePlayers.first() == currentPlayerId
+            val isResponsible = getFirstPlayerId(data) == currentPlayerId
+
+
+            if ((isDraw && isResponsible) || (!isDraw && isLastAlive)) {
                 val gameId = repository.generateNewGameId()?.toString() ?: System.currentTimeMillis().toString()
                 val durationSeconds = ((System.currentTimeMillis() - startTime) / 1000).toInt()
 

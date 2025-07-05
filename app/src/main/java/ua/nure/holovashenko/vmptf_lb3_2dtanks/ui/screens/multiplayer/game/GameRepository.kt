@@ -134,4 +134,12 @@ class GameRepository(private val firestore: FirebaseFirestore = FirebaseFirestor
             ))
         }.await()
     }
+
+    suspend fun setGameStartTimestamp(roomId: String, timestamp: Long) {
+        FirebaseFirestore.getInstance()
+            .collection("gameRooms")
+            .document(roomId)
+            .update("gameStartTimestamp", timestamp)
+            .await()
+    }
 }

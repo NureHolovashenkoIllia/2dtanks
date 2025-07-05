@@ -6,6 +6,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
@@ -20,6 +21,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import ua.nure.holovashenko.vmptf_lb3_2dtanks.R
@@ -34,7 +36,6 @@ fun GameScreen(
 ) {
     val context = LocalContext.current
     val application = context.applicationContext as Application
-
     val viewModel: GameViewModel = viewModel(
         factory = GameViewModelFactory(application, roomId, currentPlayerId)
     )
@@ -42,54 +43,40 @@ fun GameScreen(
     val playerPositions by viewModel.playerPositions.collectAsState()
     val gameType by viewModel.gameType.collectAsState()
     val teams by viewModel.teams.collectAsState()
-    val teamEmojis = remember(teams) {
-        val emojiPool = listOf("🟢", "🔴", "🟡", "🔵", "🟣", "🟤")
-        teams.keys.shuffled().zip(emojiPool).toMap()
-    }
+
     val bullets by viewModel.bullets.collectAsState()
     val gameOver by viewModel.gameOver.collectAsState()
     val map by viewModel.map.collectAsState()
     val mapLoaded by viewModel.mapLoaded.collectAsState()
     val playerDirections by viewModel.playerDirections.collectAsState()
     val remainingTime by viewModel.remainingTime.collectAsState()
-    val gridSize = 10
-
-    val minutes = remainingTime / 60
-    val seconds = remainingTime % 60
-    val formattedTime = String.format("%02d:%02d", minutes, seconds)
-
-    var showResultDialog by remember { mutableStateOf(false) }
-    var resultText by remember { mutableStateOf("") }
-
-    fun emojiForPlayer(playerId: String): String {
-        return if (gameType == "free") {
-            if (playerId == currentPlayerId) "🟢" else "🔴"
-        } else {
-            val team = teams.entries.find { it.value.contains(playerId) }?.key
-            teamEmojis[team] ?: "⬜"
+    val formattedTime by remember(remainingTime) {
+        derivedStateOf {
+            val minutes = remainingTime / 60
+            val seconds = remainingTime % 60
+            "%02d:%02d".format(minutes, seconds)
         }
     }
 
+    val gridSize = 10
+    var showResultDialog by remember { mutableStateOf(false) }
+    var result by remember { mutableStateOf(GameResult(0, ResultType.LOSE)) }
+
     LaunchedEffect(gameOver) {
         if (gameOver) {
-            resultText = viewModel.buildGameResultText(currentPlayerId)
+            result = viewModel.buildGameResult(currentPlayerId)
             showResultDialog = true
         }
     }
 
     if (showResultDialog) {
-        AlertDialog(
-            onDismissRequest = {},
-            confirmButton = {
-                TextButton(onClick = {
-                    showResultDialog = false
-                    onGameEnd()
-                }) {
-                    Text("Ok")
-                }
-            },
-            title = { Text("Game over") },
-            text = { Text(resultText) }
+        GameResultDialog(
+            kills = result.kills,
+            resultType = result.result,
+            onDismiss = {
+                showResultDialog = false
+                onGameEnd()
+            }
         )
     }
 
@@ -109,16 +96,8 @@ fun GameScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = {
-                    Column {
-                        Text("Tank battle")
-                        Text(
-                            "Time: $formattedTime | Players: ${playerPositions.size}",
-                            style = MaterialTheme.typography.bodySmall
-                        )
-                    }
-                },
+            CenterAlignedTopAppBar(
+                title = { Text("Tank battle", fontWeight = FontWeight.Bold) },
                 colors = TopAppBarDefaults.mediumTopAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primaryContainer
                 )
@@ -129,9 +108,14 @@ fun GameScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .padding(start = 24.dp, end = 24.dp, top = 48.dp),
+                .padding(start = 24.dp, end = 24.dp, top = 32.dp),
             verticalArrangement = Arrangement.SpaceBetween
         ) {
+
+            GameStatusBar(
+                formattedTime = formattedTime,
+                playerCount = playerPositions.size
+            )
 
             // Ігрове поле
             Column(
@@ -237,6 +221,145 @@ fun GameScreen(
 }
 
 @Composable
+fun GameResultDialog(
+    kills: Int,
+    resultType: ResultType,
+    onDismiss: () -> Unit
+) {
+    val iconRes = when (resultType) {
+        ResultType.WIN -> R.drawable.ic_victory
+        ResultType.LOSE -> R.drawable.ic_defeat
+        ResultType.DRAW -> R.drawable.ic_draw
+    }
+
+    val title = when (resultType) {
+        ResultType.WIN -> "Victory!"
+        ResultType.LOSE -> "Defeat"
+        ResultType.DRAW -> "Draw"
+    }
+
+    val titleColor = when (resultType) {
+        ResultType.WIN -> MaterialTheme.colorScheme.primary
+        ResultType.LOSE -> MaterialTheme.colorScheme.error
+        ResultType.DRAW -> MaterialTheme.colorScheme.tertiary
+    }
+
+    AlertDialog(
+        onDismissRequest = {},
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Continue")
+            }
+        },
+        icon = {
+            Image(
+                painter = painterResource(id = iconRes),
+                contentDescription = title,
+                modifier = Modifier
+                    .size(64.dp)
+                    .padding(4.dp)
+            )
+        },
+        title = {
+            Text(
+                text = title,
+                color = titleColor,
+                style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.ExtraBold)
+            )
+        },
+        text = {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(
+                    text = "Your kills: $kills",
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Medium)
+                )
+                Spacer(modifier = Modifier.height(10.dp))
+                Text(
+                    text = "Tap 'Continue' to return to the lobby.",
+                    style = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onSurfaceVariant)
+                )
+            }
+        },
+        shape = RoundedCornerShape(20.dp),
+        tonalElevation = 8.dp,
+        containerColor = MaterialTheme.colorScheme.surfaceContainerHighest
+    )
+}
+
+@Composable
+fun GameStatusBar(
+    formattedTime: String,
+    playerCount: Int,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        // Таймер
+        Surface(
+            shape = MaterialTheme.shapes.medium,
+            color = MaterialTheme.colorScheme.surfaceVariant,
+            tonalElevation = 2.dp,
+            shadowElevation = 4.dp,
+            modifier = Modifier
+                .weight(1f)
+                .padding(end = 8.dp)
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    painter = painterResource(id = R.drawable.ic_timer),
+                    contentDescription = "Timer",
+                    tint = MaterialTheme.colorScheme.secondary,
+                    modifier = Modifier.size(20.dp)
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(
+                    text = formattedTime,
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
+                )
+            }
+        }
+
+        // Гравці
+        Surface(
+            shape = MaterialTheme.shapes.medium,
+            color = MaterialTheme.colorScheme.surfaceVariant,
+            tonalElevation = 2.dp,
+            shadowElevation = 4.dp,
+            modifier = Modifier
+                .weight(1f)
+                .padding(start = 8.dp)
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    painter = painterResource(id = R.drawable.ic_players),
+                    contentDescription = "Players",
+                    tint = MaterialTheme.colorScheme.secondary,
+                    modifier = Modifier.size(20.dp)
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(
+                    text = "$playerCount players",
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
+                )
+            }
+        }
+    }
+}
+
+@Composable
 fun GameCellContent(
     position: Position,
     playerPositions: Map<String, Position>,
@@ -270,7 +393,7 @@ fun GameCellContent(
                 val color = getPlayerColor(playerIdHere, currentPlayerId, gameType, teams)
 
                 Image(
-                    painter = painterResource(id = R.drawable.tank_base),
+                    painter = painterResource(id = R.drawable.ic_tank),
                     contentDescription = "Tank",
                     colorFilter = ColorFilter.tint(color = color),
                     modifier = Modifier
@@ -289,7 +412,7 @@ fun GameCellContent(
                 )
 
                 Image(
-                    painter = painterResource(id = R.drawable.bullet),
+                    painter = painterResource(id = R.drawable.ic_bullet),
                     contentDescription = "Bullet",
                     colorFilter = ColorFilter.tint(color = color),
                     modifier = Modifier

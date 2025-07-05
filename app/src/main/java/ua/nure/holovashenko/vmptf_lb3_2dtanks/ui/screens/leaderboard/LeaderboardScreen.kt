@@ -34,15 +34,15 @@ fun LeaderboardScreen(
         bottomBar = {
             NavigationBar {
                 NavigationBarItem(selected = false, onClick = launchMainScreen, icon = {
-                    Icon(painterResource(R.drawable.outline_home_24), "Home")
+                    Icon(painterResource(R.drawable.ic_home), "Home")
                 }, label = { Text("Main") })
 
                 NavigationBarItem(selected = true, onClick = { }, icon = {
-                    Icon(painterResource(R.drawable.outline_trophy_24), "Leaderboard")
+                    Icon(painterResource(R.drawable.ic_leaderboard), "Leaderboard")
                 }, label = { Text("Leaderboard") })
 
                 NavigationBarItem(selected = false, onClick = launchProfileScreen, icon = {
-                    Icon(painterResource(R.drawable.outline_account_circle_24), "Profile")
+                    Icon(painterResource(R.drawable.ic_account_circle), "Profile")
                 }, label = { Text("Profile") })
             }
         }
@@ -89,7 +89,7 @@ fun LeaderboardScreen(
                     onClick = { showChartDialog = true }
                 ) {
                     Icon(
-                        painterResource(R.drawable.outline_pie_chart_24),
+                        painterResource(R.drawable.ic_pie_chart),
                         "View Chart",
                         tint = MaterialTheme.colorScheme.primary
                     )
