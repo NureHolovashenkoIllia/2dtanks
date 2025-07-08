@@ -6,17 +6,20 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.viewmodel.compose.viewModel
+import ua.nure.holovashenko.vmptf_lb3_2dtanks.R
 
 @Composable
 fun AuthScreen(
     onAuthSuccess: (String) -> Unit,
-    viewModel: AuthViewModel = viewModel()
 ) {
+    val authStrings = rememberAuthStrings()
+    val viewModel = remember { AuthViewModel(authStrings) }
+
     val isRegister by viewModel.isRegister.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val isInputValid by viewModel.isInputValid.collectAsState()
@@ -50,7 +53,7 @@ fun AuthScreen(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
-                text = if (isRegister) "Create Account" else "Welcome Back",
+                text = stringResource(if (isRegister) R.string.auth_create_account else R.string.auth_welcome_back),
                 style = MaterialTheme.typography.headlineMedium,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onPrimaryContainer
@@ -65,7 +68,7 @@ fun AuthScreen(
                         viewModel.nickname.value = it
                         viewModel.nicknameEdited.value = true
                     },
-                    label = { Text("Nickname") },
+                    label = { Text(stringResource(R.string.auth_nickname)) },
                     singleLine = true,
                     isError = nicknameTouched && nicknameEdited && nicknameError != null,
                     modifier = Modifier
@@ -93,7 +96,7 @@ fun AuthScreen(
                     viewModel.email.value = it
                     viewModel.emailEdited.value = true
                 },
-                label = { Text("Email") },
+                label = { Text(stringResource(R.string.auth_email)) },
                 singleLine = true,
                 isError = emailTouched && emailEdited && emailError != null,
                 modifier = Modifier
@@ -120,7 +123,7 @@ fun AuthScreen(
                     viewModel.password.value = it
                     viewModel.passwordEdited.value = true
                 },
-                label = { Text("Password") },
+                label = { Text(stringResource(R.string.auth_password)) },
                 singleLine = true,
                 visualTransformation = PasswordVisualTransformation(),
                 isError = passwordTouched && passwordEdited && passwordError != null,
@@ -159,7 +162,12 @@ fun AuthScreen(
                     .height(48.dp)
             ) {
                 Text(
-                    text = if (isRegister) "Register" else "Log In",
+                    text = stringResource(
+                        if (isRegister)
+                            R.string.auth_register
+                        else
+                            R.string.auth_login
+                    ),
                     fontSize = 16.sp
                 )
             }
@@ -168,13 +176,28 @@ fun AuthScreen(
 
             TextButton(onClick = { viewModel.toggleAuthMode() }) {
                 Text(
-                    text = if (isRegister)
-                        "Already have an account? Log in"
-                    else
-                        "Don’t have an account? Register",
+                    text = stringResource(
+                        if (isRegister)
+                            R.string.auth_toggle_to_login
+                        else
+                            R.string.auth_toggle_to_register
+                    ),
                     style = MaterialTheme.typography.bodyMedium
                 )
             }
         }
     }
+}
+
+@Composable
+fun rememberAuthStrings(): AuthStrings {
+    return AuthStrings(
+        emailEmpty = stringResource(R.string.auth_error_email_empty),
+        emailInvalid = stringResource(R.string.auth_error_email_invalid),
+        passwordEmpty = stringResource(R.string.auth_error_password_empty),
+        passwordShort = stringResource(R.string.auth_error_password_short),
+        nicknameEmpty = stringResource(R.string.auth_error_nickname_empty),
+        nicknameShort = stringResource(R.string.auth_error_nickname_short),
+        nicknameTaken = stringResource(R.string.auth_error_nickname_taken)
+    )
 }

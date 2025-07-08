@@ -10,10 +10,13 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.launch
+import ua.nure.holovashenko.vmptf_lb3_2dtanks.R
 
 @Composable
 fun WaitingRoomScreen(
@@ -30,6 +33,12 @@ fun WaitingRoomScreen(
     val snackBarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
     val isRoomFull = viewModel.isRoomFull()
+
+    val strings = rememberWaitingGameStrings()
+
+    LaunchedEffect(Unit) {
+        viewModel.updateStrings(strings)
+    }
 
     if (!fromGame) {
         LaunchedEffect(roomId) {
@@ -67,7 +76,7 @@ fun WaitingRoomScreen(
                         modifier = Modifier.clickable {
                             clipboardManager.setText(androidx.compose.ui.text.AnnotatedString(roomId))
                             coroutineScope.launch {
-                                snackBarHostState.showSnackbar("Room ID copied")
+                                snackBarHostState.showSnackbar(strings.roomIdCopied)
                             }
                         }
                     ) {
@@ -86,7 +95,7 @@ fun WaitingRoomScreen(
                             onError = { /* TODO */ }
                         )
                     }) {
-                        Icon(Icons.AutoMirrored.Filled.ExitToApp, contentDescription = "Exit")
+                        Icon(Icons.AutoMirrored.Filled.ExitToApp, contentDescription = strings.exit)
                     }
                 }
             )
@@ -100,7 +109,7 @@ fun WaitingRoomScreen(
                 .fillMaxSize()
         ) {
             Text(
-                text = if (isRoomFull) "Room is full. Ready to start!" else "Waiting for players...",
+                text = if (isRoomFull) strings.roomFull else strings.waiting,
                 style = MaterialTheme.typography.headlineSmall
             )
 
@@ -122,32 +131,11 @@ fun WaitingRoomScreen(
 
                         if (emails.isNotEmpty()) {
                             items(emails) { email ->
-                                Card(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    shape = MaterialTheme.shapes.medium,
-                                    colors = CardDefaults.cardColors(
-                                        containerColor = MaterialTheme.colorScheme.primaryContainer
-                                    )
-                                ) {
-                                    Text(
-                                        text = email,
-                                        style = MaterialTheme.typography.bodyLarge,
-                                        modifier = Modifier.padding(16.dp)
-                                    )
-                                }
+                                PlayerCard(email)
                             }
                         } else {
                             item {
-                                Card(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
-                                ) {
-                                    Text(
-                                        text = "The command is empty",
-                                        style = MaterialTheme.typography.bodyLarge,
-                                        modifier = Modifier.padding(16.dp)
-                                    )
-                                }
+                                PlayerCard(strings.commandEmpty, MaterialTheme.colorScheme.surfaceVariant)
                             }
                         }
 
@@ -155,17 +143,7 @@ fun WaitingRoomScreen(
                     }
                 } else {
                     items(uiState.playerEmails) { email ->
-                        Card(
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = MaterialTheme.shapes.medium,
-                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
-                        ) {
-                            Text(
-                                text = email,
-                                style = MaterialTheme.typography.bodyLarge,
-                                modifier = Modifier.padding(16.dp)
-                            )
-                        }
+                        PlayerCard(email)
                     }
                 }
             }
@@ -188,9 +166,41 @@ fun WaitingRoomScreen(
                         .height(56.dp),
                     shape = MaterialTheme.shapes.large
                 ) {
-                    Text("Start Game")
+                    Text(strings.startGame)
                 }
             }
         }
     }
+}
+
+@Composable
+fun PlayerCard(name: String, contColor: Color = MaterialTheme.colorScheme.primaryContainer) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.medium,
+        colors = CardDefaults.cardColors(containerColor = contColor)
+    ) {
+        Text(
+            text = name,
+            style = MaterialTheme.typography.bodyLarge,
+            modifier = Modifier.padding(16.dp)
+        )
+    }
+}
+
+@Composable
+fun rememberWaitingGameStrings(): WaitingRoomStrings {
+    return WaitingRoomStrings(
+        unknownPlayer = stringResource(R.string.unknown_player),
+        roomFull = stringResource(R.string.waiting_room_full),
+        waiting = stringResource(R.string.waiting_room_waiting),
+        roomIdCopied = stringResource(R.string.waiting_room_id_copied),
+        commandEmpty = stringResource(R.string.waiting_team_empty),
+        startGame = stringResource(R.string.start_game),
+        exit = stringResource(R.string.exit),
+        errorRoomNotFound = stringResource(R.string.error_room_not_found),
+        errorLeaveFailed = stringResource(R.string.error_leave_failed),
+        errorMinPlayers = stringResource(R.string.error_min_players),
+        errorTeamEmpty = stringResource(R.string.error_team_empty)
+    )
 }

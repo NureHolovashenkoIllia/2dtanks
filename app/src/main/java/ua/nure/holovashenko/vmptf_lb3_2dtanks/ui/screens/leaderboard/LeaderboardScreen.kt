@@ -11,6 +11,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -22,28 +23,34 @@ fun LeaderboardScreen(
     launchProfileScreen: () -> Unit,
     viewModel: LeaderboardViewModel = viewModel()
 ) {
+    val notAvailable = stringResource(R.string.not_available)
+    val isLoading by viewModel.isLoading
     val leaderboard by viewModel.leaderboard.collectAsState()
     val sortOption by viewModel.sortOption.collectAsState()
     var expanded by remember { mutableStateOf(false) }
     var showChartDialog by remember { mutableStateOf(false) }
 
+    LaunchedEffect(Unit) {
+        viewModel.fetchLeaderboard(notAvailable)
+    }
+
     Scaffold(
         topBar = {
-            CenterAlignedTopAppBar(title = { Text("Leaderboard", fontWeight = FontWeight.Bold) })
+            CenterAlignedTopAppBar(title = { Text(stringResource(R.string.leaderboard), fontWeight = FontWeight.Bold) })
         },
         bottomBar = {
             NavigationBar {
                 NavigationBarItem(selected = false, onClick = launchMainScreen, icon = {
-                    Icon(painterResource(R.drawable.ic_home), "Home")
-                }, label = { Text("Main") })
+                    Icon(painterResource(R.drawable.ic_home), stringResource(R.string.main))
+                }, label = { Text(stringResource(R.string.main)) })
 
                 NavigationBarItem(selected = true, onClick = { }, icon = {
-                    Icon(painterResource(R.drawable.ic_leaderboard), "Leaderboard")
-                }, label = { Text("Leaderboard") })
+                    Icon(painterResource(R.drawable.ic_leaderboard), stringResource(R.string.leaderboard))
+                }, label = { Text(stringResource(R.string.leaderboard)) })
 
                 NavigationBarItem(selected = false, onClick = launchProfileScreen, icon = {
-                    Icon(painterResource(R.drawable.ic_account_circle), "Profile")
-                }, label = { Text("Profile") })
+                    Icon(painterResource(R.drawable.ic_account_circle), stringResource(R.string.profile))
+                }, label = { Text(stringResource(R.string.profile)) })
             }
         }
     ) { paddingValues ->
@@ -61,7 +68,7 @@ fun LeaderboardScreen(
             ) {
                 Box(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = "Sorted by: ${sortOption.label}",
+                        text = stringResource(R.string.sorted_by, stringResource(sortOption.labelResId)),
                         style = MaterialTheme.typography.titleMedium.copy(
                             color = MaterialTheme.colorScheme.primary
                         ),
@@ -75,9 +82,10 @@ fun LeaderboardScreen(
                     ) {
                         SortOption.entries.forEach { option ->
                             DropdownMenuItem(
-                                text = { Text(option.label) },
+                                text = { Text(stringResource(option.labelResId)) },
                                 onClick = {
                                     viewModel.setSortOption(option)
+                                    viewModel.fetchLeaderboard(notAvailable)
                                     expanded = false
                                 }
                             )
@@ -98,8 +106,21 @@ fun LeaderboardScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            if (leaderboard.isEmpty()) {
-                Text("Loading or no players...", style = MaterialTheme.typography.bodyLarge)
+            if (isLoading) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    CircularProgressIndicator()
+                    Text(
+                        text = stringResource(R.string.loading_leaderboard_data),
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+            } else if (leaderboard.isEmpty()) {
+                Text(stringResource(R.string.no_players), style = MaterialTheme.typography.bodyLarge)
             } else {
                 LeaderboardTable(leaderboard)
             }
@@ -110,10 +131,10 @@ fun LeaderboardScreen(
                 onDismissRequest = { showChartDialog = false },
                 confirmButton = {
                     TextButton(onClick = { showChartDialog = false }) {
-                        Text("Close")
+                        Text(stringResource(R.string.close))
                     }
                 },
-                title = { Text("Kills Distribution") },
+                title = { Text(stringResource(R.string.kills_distribution)) },
                 text = { KillsPieChart(players = leaderboard) }
             )
         }
@@ -139,11 +160,11 @@ fun LeaderboardTable(players: List<PlayerStatistic>) {
                     .padding(vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                TableCell("#", weight = 0.5f, fontWeight = FontWeight.Bold)
-                TableCell("Nickname", weight = 2f, fontWeight = FontWeight.Bold)
-                TableCell("Wins", weight = 1f, fontWeight = FontWeight.Bold)
-                TableCell("Matches", weight = 1.3f, fontWeight = FontWeight.Bold)
-                TableCell("Destroyed", weight = 1.5f, fontWeight = FontWeight.Bold)
+                TableCell(stringResource(R.string.column_rank), weight = 0.6f, fontWeight = FontWeight.Bold, multiline = true)
+                TableCell(stringResource(R.string.column_nickname), weight = 2f, fontWeight = FontWeight.Bold, multiline = true)
+                TableCell(stringResource(R.string.column_wins), weight = 1f, fontWeight = FontWeight.Bold, multiline = true)
+                TableCell(stringResource(R.string.column_matches), weight = 1.3f, fontWeight = FontWeight.Bold, multiline = true)
+                TableCell(stringResource(R.string.column_destroyed), weight = 1.5f, fontWeight = FontWeight.Bold, multiline = true)
             }
         }
 
@@ -158,8 +179,8 @@ fun LeaderboardTable(players: List<PlayerStatistic>) {
                     .padding(vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                TableCell("${index + 1}", weight = 0.5f)
-                TableCell(player.nickname ?: "Player", weight = 2f, multiline = true)
+                TableCell("${index + 1}", weight = 0.6f)
+                TableCell(player.nickname ?: stringResource(R.string.unknown_player), weight = 2f, multiline = true)
                 TableCell("${player.wins}", weight = 1f)
                 TableCell("${player.matches}", weight = 1.3f)
                 TableCell("${player.kills}", weight = 1.5f)

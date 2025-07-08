@@ -7,10 +7,12 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import ua.nure.holovashenko.vmptf_lb3_2dtanks.ui.screens.multiplayer.GameType
+import ua.nure.holovashenko.vmptf_lb3_2dtanks.R
 
 @Composable
 fun JoinGameScreen(
@@ -21,13 +23,25 @@ fun JoinGameScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
+    val joinGameStrings = rememberJoinGameStrings()
+
+    val error = uiState.errorMessage?.let { msg ->
+        if (msg.startsWith("ROOM_TYPE_MISMATCH:")) {
+            val parts = msg.split(":")
+            val expected = parts.getOrNull(1) ?: stringResource(R.string.not_available)
+            val actual = parts.getOrNull(2) ?: stringResource(R.string.not_available)
+
+            stringResource(R.string.join_error_room_type_mismatch, actual, expected)
+        } else msg
+    }
+
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
-                title = { Text("Join Game", fontWeight = FontWeight.Bold) },
+                title = { Text(stringResource(R.string.join_game), fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
                     }
                 }
             )
@@ -57,7 +71,7 @@ fun JoinGameScreen(
                 OutlinedTextField(
                     value = uiState.roomCode,
                     onValueChange = { viewModel.onRoomCodeChange(it) },
-                    label = { Text("Room code") },
+                    label = { Text(stringResource(R.string.room_code)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -67,13 +81,13 @@ fun JoinGameScreen(
                     OutlinedTextField(
                         value = uiState.teamName,
                         onValueChange = { viewModel.onTeamNameChange(it) },
-                        label = { Text("Team name") },
+                        label = { Text(stringResource(R.string.team_name)) },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth()
                     )
                 }
 
-                uiState.errorMessage?.let {
+                error?.let {
                     Spacer(modifier = Modifier.height(16.dp))
                     Text(
                         text = it,
@@ -85,7 +99,7 @@ fun JoinGameScreen(
 
             Button(
                 onClick = {
-                    viewModel.joinRoom(currentPlayerId, onJoinSuccess)
+                    viewModel.joinRoom(currentPlayerId, onJoinSuccess, joinGameStrings)
                 },
                 enabled = !uiState.isJoining,
                 shape = MaterialTheme.shapes.large,
@@ -96,9 +110,9 @@ fun JoinGameScreen(
                 if (uiState.isJoining) {
                     CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
                     Spacer(modifier = Modifier.width(12.dp))
-                    Text("Joining...", style = MaterialTheme.typography.bodyLarge)
+                    Text(stringResource(R.string.joining), style = MaterialTheme.typography.bodyLarge)
                 } else {
-                    Text("Join", style = MaterialTheme.typography.bodyLarge)
+                    Text(stringResource(R.string.join), style = MaterialTheme.typography.bodyLarge)
                 }
             }
         }
@@ -144,4 +158,18 @@ fun SegmentedButtonRow(
             )
         }
     }
+}
+
+@Composable
+fun rememberJoinGameStrings(): JoinGameStrings {
+    return JoinGameStrings(
+        emptyRoomCode = stringResource(R.string.join_error_empty_code),
+        roomNotFound = stringResource(R.string.join_error_room_not_found),
+        unknownRoomType = stringResource(R.string.join_error_unknown_room_type),
+        emptyTeamName = stringResource(R.string.join_error_empty_team_name),
+        teamNotFound = stringResource(R.string.join_error_team_not_found),
+        teamFull = stringResource(R.string.join_error_team_full),
+        joinError = stringResource(R.string.join_error_joining),
+        joinFailed = stringResource(R.string.join_error_join_failed)
+    )
 }

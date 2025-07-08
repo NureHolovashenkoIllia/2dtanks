@@ -21,6 +21,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -88,7 +89,7 @@ fun GameScreen(
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 CircularProgressIndicator()
                 Spacer(modifier = Modifier.height(16.dp))
-                Text("Loading the map...")
+                Text(stringResource(R.string.loading_map))
             }
         }
         return
@@ -97,7 +98,7 @@ fun GameScreen(
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
-                title = { Text("Tank battle", fontWeight = FontWeight.Bold) },
+                title = { Text(stringResource(R.string.game_title), fontWeight = FontWeight.Bold) },
                 colors = TopAppBarDefaults.mediumTopAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primaryContainer
                 )
@@ -160,7 +161,7 @@ fun GameScreen(
 
                     DirectionButton(
                         icon = Icons.Filled.KeyboardArrowUp,
-                        contentDescription = "Up",
+                        contentDescription = stringResource(R.string.up),
                         onClick = { viewModel.move(Direction.UP) }
                     )
 
@@ -170,7 +171,7 @@ fun GameScreen(
                     ) {
                         DirectionButton(
                             icon = Icons.AutoMirrored.Filled.KeyboardArrowLeft,
-                            contentDescription = "Left",
+                            contentDescription = stringResource(R.string.left),
                             onClick = { viewModel.move(Direction.LEFT) }
                         )
 
@@ -178,14 +179,14 @@ fun GameScreen(
 
                         DirectionButton(
                             icon = Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                            contentDescription = "Right",
+                            contentDescription = stringResource(R.string.right),
                             onClick = { viewModel.move(Direction.RIGHT) }
                         )
                     }
 
                     DirectionButton(
                         icon = Icons.Filled.KeyboardArrowDown,
-                        contentDescription = "Down",
+                        contentDescription = stringResource(R.string.down),
                         onClick = { viewModel.move(Direction.DOWN) }
                     )
                 }
@@ -209,7 +210,7 @@ fun GameScreen(
                     ) {
                         Image(
                             painter = painterResource(id = R.drawable.ic_fire),
-                            contentDescription = "Shoot",
+                            contentDescription = stringResource(R.string.desc_shoot),
                             modifier = Modifier
                                 .size(40.dp)
                         )
@@ -233,9 +234,9 @@ fun GameResultDialog(
     }
 
     val title = when (resultType) {
-        ResultType.WIN -> "Victory!"
-        ResultType.LOSE -> "Defeat"
-        ResultType.DRAW -> "Draw"
+        ResultType.WIN -> stringResource(R.string.victory)
+        ResultType.LOSE -> stringResource(R.string.defeat)
+        ResultType.DRAW -> stringResource(R.string.draw)
     }
 
     val titleColor = when (resultType) {
@@ -248,7 +249,7 @@ fun GameResultDialog(
         onDismissRequest = {},
         confirmButton = {
             TextButton(onClick = onDismiss) {
-                Text("Continue")
+                Text(stringResource(R.string.button_continue))
             }
         },
         icon = {
@@ -273,12 +274,12 @@ fun GameResultDialog(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text(
-                    text = "Your kills: $kills",
+                    text = stringResource(R.string.your_kills, kills),
                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Medium)
                 )
                 Spacer(modifier = Modifier.height(10.dp))
                 Text(
-                    text = "Tap 'Continue' to return to the lobby.",
+                    text = stringResource(R.string.tap_continue),
                     style = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onSurfaceVariant)
                 )
             }
@@ -317,7 +318,7 @@ fun GameStatusBar(
             ) {
                 Icon(
                     painter = painterResource(id = R.drawable.ic_timer),
-                    contentDescription = "Timer",
+                    contentDescription = stringResource(R.string.timer),
                     tint = MaterialTheme.colorScheme.secondary,
                     modifier = Modifier.size(20.dp)
                 )
@@ -345,13 +346,13 @@ fun GameStatusBar(
             ) {
                 Icon(
                     painter = painterResource(id = R.drawable.ic_players),
-                    contentDescription = "Players",
+                    contentDescription = stringResource(R.string.players),
                     tint = MaterialTheme.colorScheme.secondary,
                     modifier = Modifier.size(20.dp)
                 )
                 Spacer(modifier = Modifier.width(6.dp))
                 Text(
-                    text = "$playerCount players",
+                    text = stringResource(R.string.game_players_count, playerCount),
                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
                 )
             }
@@ -394,7 +395,7 @@ fun GameCellContent(
 
                 Image(
                     painter = painterResource(id = R.drawable.ic_tank),
-                    contentDescription = "Tank",
+                    contentDescription = stringResource(R.string.desc_tank),
                     colorFilter = ColorFilter.tint(color = color),
                     modifier = Modifier
                         .size(24.dp)
@@ -413,7 +414,7 @@ fun GameCellContent(
 
                 Image(
                     painter = painterResource(id = R.drawable.ic_bullet),
-                    contentDescription = "Bullet",
+                    contentDescription = stringResource(R.string.desc_bullet),
                     colorFilter = ColorFilter.tint(color = color),
                     modifier = Modifier
                         .size(12.dp)

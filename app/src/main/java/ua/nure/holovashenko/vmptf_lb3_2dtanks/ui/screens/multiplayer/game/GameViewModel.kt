@@ -192,7 +192,7 @@ class GameViewModel(
 
                 if (remaining == 0) {
                     endGame(
-                        winnerId = "Draw, time is up",
+                        winnerId = "Draw",
                         kills = _kills[currentPlayerId] ?: 0,
                         won = false
                     )
@@ -209,7 +209,7 @@ class GameViewModel(
 
         return when (lastWinner) {
             null -> GameResult(kills, ResultType.LOSE)
-            "Draw, time is up" -> GameResult(kills, ResultType.DRAW)
+            "Draw" -> GameResult(kills, ResultType.DRAW)
             playerId, playerTeam -> GameResult(kills, ResultType.WIN)
             else -> GameResult(kills, ResultType.LOSE)
         }
@@ -461,7 +461,7 @@ class GameViewModel(
             val type = data["type"] as? String ?: "free"
             val isTournament = type == "tournament"
 
-            val isDraw = winnerId == "Draw, time is up"
+            val isDraw = winnerId == "Draw"
             val isLastAlive = alivePlayers.size == 1 && alivePlayers.first() == currentPlayerId
             val isResponsible = getFirstPlayerId(data) == currentPlayerId
 
@@ -475,7 +475,7 @@ class GameViewModel(
                     "datetime" to Date(),
                     "durationSeconds" to durationSeconds,
                     "type" to type,
-                    "winner" to (winnerId ?: "unknown")
+                    "winner" to (winnerId ?: "n/a")
                 )
 
                 if (isTournament) {

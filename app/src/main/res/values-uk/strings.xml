@@ -1,0 +1,140 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Mini Tanks</string>
+
+    <string name="auth_create_account">Створити акаунт</string>
+    <string name="auth_welcome_back">З поверненням</string>
+    <string name="auth_email">Електронна пошта</string>
+    <string name="auth_password">Пароль</string>
+    <string name="auth_nickname">Псевдонім</string>
+    <string name="auth_register">Зареєструватися</string>
+    <string name="auth_login">Увійти</string>
+    <string name="auth_toggle_to_login">Вже маєте акаунт? Увійти</string>
+    <string name="auth_toggle_to_register">Не маєте акаунта? Зареєструватися</string>
+    <string name="auth_error_email_empty">Поле електронної пошти не може бути порожнім</string>
+    <string name="auth_error_email_invalid">Недійсний формат пошти</string>
+    <string name="auth_error_password_empty">Поле пароля не може бути порожнім</string>
+    <string name="auth_error_password_short">Пароль має містити щонайменше 6 символів</string>
+    <string name="auth_error_nickname_empty">Псевдонім не може бути порожнім</string>
+    <string name="auth_error_nickname_short">Псевдонім має містити щонайменше 3 символи</string>
+    <string name="auth_error_nickname_taken">Псевдонім вже зайнятий</string>
+    <string name="auth_error_user_uid">Не вдалося отримати UID користувача</string>
+    <string name="auth_error_user_save">Помилка збереження користувача</string>
+
+    <string name="main">Головна</string>
+    <string name="leaderboard">Таблиця лідерів</string>
+    <string name="profile">Профіль</string>
+    <string name="welcome">Вітаємо, командире!</string>
+    <string name="create">Create</string>
+    <string name="join">Join</string>
+    <string name="loading_leaderboard_data">Завантаження таблиці лідерів…</string>
+
+    <string name="user_info">Мій профіль</string>
+    <string name="nickname">Нікнейм: %1$s</string>
+    <string name="email">Email: %1$s</string>
+    <string name="games_won">Виграно ігор: %1$s</string>
+    <string name="games_played">Зіграно ігор: %1$s</string>
+    <string name="tanks_destroyed">Знищено танків: %1$s</string>
+
+    <string name="user_not_authorized">Користувач не авторизований</string>
+    <string name="not_available">н/д</string>
+    <string name="loading">Завантаження…</string>
+    <string name="date_format">dd.MM.yyyy</string>
+    <string name="second_format">%dс</string>
+
+    <string name="match_history">Зіграні матчі</string>
+    <string name="loading_match_history">Завантаження історії матчів…</string>
+    <string name="no_match_history">У вас жодного зіграного матчу.
+        \nСтворіть або доєднайтесь до існуючої кімнати для гри.</string>
+    <string name="logout">Вийти</string>
+
+    <string name="header_id">#</string>
+    <string name="header_date">Дата</string>
+    <string name="header_duration">Тривалість</string>
+    <string name="header_type">Тип</string>
+    <string name="header_winner">Переможець</string>
+
+    <string name="sorted_by">Сортування: %1$s</string>
+    <string name="view_chart">Діаграма</string>
+    <string name="close">Закрити</string>
+    <string name="kills_distribution">Розподіл вбивств</string>
+    <string name="no_players">Таблиця лідерів порожня.
+        \nПочни гру, щоб поборотися за перше місце!</string>
+    <string name="column_rank">№</string>
+    <string name="column_nickname">Нікнейм</string>
+    <string name="column_wins">Перемоги</string>
+    <string name="column_matches">Матчі</string>
+    <string name="column_destroyed">Знищено</string>
+    <string name="no_kills">Немає записаних вбивств.</string>
+    <string name="kills">знищено</string>
+    <string name="unknown_player">н/д</string>
+
+    <string name="sort_wins">Перемоги</string>
+    <string name="sort_matches">Матчі</string>
+    <string name="sort_kills">Знищено</string>
+
+    <string name="join_game">Приєднатися до гри</string>
+    <string name="room_code">Код кімнати</string>
+    <string name="team_name">Назва команди</string>
+    <string name="join_room">Приєднатися</string>
+    <string name="joining">Приєднання…</string>
+    <string name="back">Назад</string>
+
+    <string name="game_type_free">Вільна</string>
+    <string name="game_type_tournament">Турнірна</string>
+    <string name="join_error_empty_code">Введіть код кімнати</string>
+    <string name="join_error_room_not_found">Кімната не знайдена</string>
+    <string name="join_error_unknown_room_type">Невідомий тип кімнати</string>
+    <string name="join_error_room_type_mismatch">Обраний режим (%1$s) не відповідає типу кімнати (%2$s)</string>
+    <string name="join_error_empty_team_name">Введіть назву команди</string>
+    <string name="join_error_team_not_found">Команду не знайдено</string>
+    <string name="join_error_team_full">Команда вже заповнена</string>
+    <string name="join_error_joining">Помилка при підключенні</string>
+    <string name="join_error_join_failed">Не вдалося приєднатися</string>
+
+    <string name="create_game">Створити гру</string>
+    <string name="create_room">Створити</string>
+    <string name="creating">Створення…</string>
+    <string name="teams_count">Кількість команд</string>
+    <string name="players_per_team">Кількість гравців у команді</string>
+    <string name="players_count">Кількість гравців</string>
+    <string name="game_duration_min">Тривалість гри (хв)</string>
+
+    <string name="create_error_teams_count">Кількість команд має бути щонайменше 2</string>
+    <string name="create_error_players_per_team">Гравців у команді має бути щонайменше 1</string>
+    <string name="create_error_players_count">Кількість гравців має бути щонайменше 2</string>
+    <string name="create_error_game_duration">Тривалість гри має бути щонайменше 1 хвилина</string>
+    <string name="create_error_failed">Не вдалося створити кімнату. Спробуйте ще раз.</string>
+    <string name="create_error_timeout">Таймаут: сервер не відповідає. Перевірте з\'єднання.</string>
+
+    <string name="waiting_room_full">Усі гравці приєдналися. Можна починати!</string>
+    <string name="waiting_room_waiting">Очікування гравців…</string>
+    <string name="waiting_room_id_copied">ID кімнати скопійовано</string>
+    <string name="waiting_team_empty">Команда порожня</string>
+    <string name="start_game">Почати гру</string>
+    <string name="exit">Вийти</string>
+    <string name="error_room_not_found">Кімната не знайдена</string>
+    <string name="error_leave_failed">Не вдалося вийти з кімнати</string>
+    <string name="error_min_players">Для початку гри потрібно щонайменше два гравці.</string>
+    <string name="error_team_empty">Кожна команда повинна містити хоча б одного гравця.</string>
+
+    <string name="game_title">Танкова битва</string>
+    <string name="loading_map">Завантаження карти…</string>
+    <string name="timer">Таймер</string>
+    <string name="players">Гравці</string>
+    <string name="desc_shoot">Вистріл</string>
+    <string name="desc_bullet">Куля</string>
+    <string name="desc_tank">Танк</string>
+    <string name="up">Вгору</string>
+    <string name="down">Вниз</string>
+    <string name="left">Вліво</string>
+    <string name="right">Вправо</string>
+    <string name="shoot">Вистріл</string>
+    <string name="victory">Перемога!</string>
+    <string name="defeat">Поразка</string>
+    <string name="draw">Нічия</string>
+    <string name="your_kills">Ваші вбивства: %1$d</string>
+    <string name="tap_continue">Натисніть \'Продовжити\', щоб повернутись до лобі.</string>
+    <string name="button_continue">Продовжити</string>
+    <string name="game_players_count">Гравців: %1$d</string>
+</resources>

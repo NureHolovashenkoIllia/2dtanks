@@ -10,20 +10,24 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.github.tehras.charts.piechart.PieChart
 import com.github.tehras.charts.piechart.PieChartData
 import com.github.tehras.charts.piechart.animation.simpleChartAnimation
+import ua.nure.holovashenko.vmptf_lb3_2dtanks.R
 
 @Composable
 fun KillsPieChart(players: List<PlayerStatistic>) {
     val totalKills = players.sumOf { it.kills }
     if (totalKills == 0) {
-        Text("No kills recorded.", style = MaterialTheme.typography.bodyLarge)
+        Text(stringResource(R.string.no_kills), style = MaterialTheme.typography.bodyLarge)
         return
     }
 
     val filteredPlayers = players.filter { it.kills > 0 }
+        .sortedByDescending { it.kills }
+
     val pieChartData = PieChartData(
         slices = filteredPlayers.mapIndexed { index, player ->
             PieChartData.Slice(
@@ -50,7 +54,7 @@ fun KillsPieChart(players: List<PlayerStatistic>) {
             filteredPlayers.forEachIndexed { index, player ->
                 val percentage = (player.kills * 100f / totalKills).toInt()
                 Text(
-                    text = "${index + 1}. ${player.nickname} - ${player.kills} kills ($percentage%)",
+                    text = "${index + 1}. ${player.nickname ?: stringResource(R.string.unknown_player)} - ${player.kills} ${stringResource(R.string.kills)} ($percentage%)",
                     style = MaterialTheme.typography.bodySmall,
                     color = pieColors[index % pieColors.size],
                     modifier = Modifier.padding(start = 8.dp)

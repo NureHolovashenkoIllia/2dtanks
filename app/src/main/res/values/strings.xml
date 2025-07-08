@@ -1,3 +1,139 @@
 <resources>
     <string name="app_name">Mini Tanks</string>
+
+    <string name="auth_create_account">Create Account</string>
+    <string name="auth_welcome_back">Welcome Back</string>
+    <string name="auth_email">Email</string>
+    <string name="auth_password">Password</string>
+    <string name="auth_nickname">Nickname</string>
+    <string name="auth_register">Register</string>
+    <string name="auth_login">Log In</string>
+    <string name="auth_toggle_to_login">Already have an account? Log in</string>
+    <string name="auth_toggle_to_register">Don’t have an account? Register</string>
+    <string name="auth_error_email_empty">Email cannot be empty</string>
+    <string name="auth_error_email_invalid">Invalid email format</string>
+    <string name="auth_error_password_empty">Password cannot be empty</string>
+    <string name="auth_error_password_short">Password must be at least 6 characters</string>
+    <string name="auth_error_nickname_empty">Nickname cannot be empty</string>
+    <string name="auth_error_nickname_short">Nickname must be at least 3 characters</string>
+    <string name="auth_error_nickname_taken">Nickname already taken</string>
+    <string name="auth_error_user_uid">Failed to get user UID</string>
+    <string name="auth_error_user_save">Error saving user</string>
+
+    <string name="main">Main</string>
+    <string name="leaderboard">Leaderboard</string>
+    <string name="profile">Profile</string>
+    <string name="welcome">Welcome to Tanks!</string>
+    <string name="create">Create</string>
+    <string name="join">Join</string>
+    <string name="loading_leaderboard_data">Loading leaderboard…</string>
+
+    <string name="user_info">My profile</string>
+    <string name="nickname">Nickname: %1$s</string>
+    <string name="email">Email: %1$s</string>
+    <string name="games_won">Games won: %1$s</string>
+    <string name="games_played">Games played: %1$s</string>
+    <string name="tanks_destroyed">Tanks destroyed: %1$s</string>
+
+    <string name="user_not_authorized">User is not authorized</string>
+    <string name="not_available">n/a</string>
+    <string name="loading">Loading…</string>
+    <string name="date_format">MM.dd.yyyy</string>
+    <string name="second_format">%ds</string>
+
+    <string name="match_history">Matches</string>
+    <string name="loading_match_history">Loading match history…</string>
+    <string name="no_match_history">You haven’t played any matches yet.
+        \nCreate a new game room or join an existing one to start playing.</string>
+    <string name="logout">Log out</string>
+
+    <string name="header_id">#</string>
+    <string name="header_date">Date</string>
+    <string name="header_duration">Duration</string>
+    <string name="header_type">Type</string>
+    <string name="header_winner">Winner</string>
+
+    <string name="sorted_by">Sorted by: %1$s</string>
+    <string name="view_chart">View Chart</string>
+    <string name="close">Close</string>
+    <string name="kills_distribution">Kills Distribution</string>
+    <string name="no_players">The leaderboard is not available.
+        \nCompete with other players to reach the top.</string>
+    <string name="column_rank">#</string>
+    <string name="column_nickname">Nickname</string>
+    <string name="column_wins">Wins</string>
+    <string name="column_matches">Matches</string>
+    <string name="column_destroyed">Destroyed</string>
+    <string name="no_kills">No kills recorded.</string>
+    <string name="kills">kills</string>
+    <string name="unknown_player">n/a</string>
+
+    <string name="sort_wins">Victories</string>
+    <string name="sort_matches">Matches</string>
+    <string name="sort_kills">Destroyed</string>
+
+    <string name="join_game">Join Game</string>
+    <string name="room_code">Room code</string>
+    <string name="team_name">Team name</string>
+    <string name="join_room">Join</string>
+    <string name="joining">Joining…</string>
+    <string name="back">Back</string>
+
+    <string name="game_type_free">Free</string>
+    <string name="game_type_tournament">Tournament</string>
+    <string name="join_error_empty_code">Please enter room code</string>
+    <string name="join_error_room_not_found">Room not found</string>
+    <string name="join_error_unknown_room_type">Unknown room type</string>
+    <string name="join_error_room_type_mismatch">Selected mode (%1$s) does not match room type (%2$s)</string>
+    <string name="join_error_empty_team_name">Please enter team name</string>
+    <string name="join_error_team_not_found">Team not found</string>
+    <string name="join_error_team_full">Team is already full</string>
+    <string name="join_error_joining">Error joining</string>
+    <string name="join_error_join_failed">Failed to join</string>
+
+    <string name="create_game">Create Game</string>
+    <string name="create_room">Create</string>
+    <string name="creating">Creating…</string>
+    <string name="teams_count">Teams count</string>
+    <string name="players_per_team">Players per team</string>
+    <string name="players_count">Players count</string>
+    <string name="game_duration_min">Game duration (min)</string>
+
+    <string name="create_error_teams_count">Teams count must be at least 2</string>
+    <string name="create_error_players_per_team">Players per team must be at least 1</string>
+    <string name="create_error_players_count">Players count must be at least 2</string>
+    <string name="create_error_game_duration">Game duration must be at least 1</string>
+    <string name="create_error_failed">Failed to create room. Please try again.</string>
+    <string name="create_error_timeout">Timeout: server not responding. Check your connection.</string>
+
+    <string name="waiting_room_full">Room is full. Ready to start!</string>
+    <string name="waiting_room_waiting">Waiting for players…</string>
+    <string name="waiting_room_id_copied">Room ID copied</string>
+    <string name="waiting_team_empty">The team is empty</string>
+    <string name="start_game">Start Game</string>
+    <string name="exit">Exit</string>
+    <string name="error_room_not_found">Room not found</string>
+    <string name="error_leave_failed">Failed to leave room</string>
+    <string name="error_min_players">At least two players are required to start the game.</string>
+    <string name="error_team_empty">Each team must have at least one player.</string>
+
+    <string name="game_title">Tank battle</string>
+    <string name="loading_map">Loading the map…</string>
+    <string name="timer">Timer</string>
+    <string name="players">Players</string>
+    <string name="desc_shoot">Shoot</string>
+    <string name="desc_bullet">Bullet</string>
+    <string name="desc_tank">Tank</string>
+    <string name="up">Up</string>
+    <string name="down">Down</string>
+    <string name="left">Left</string>
+    <string name="right">Right</string>
+    <string name="shoot">Shoot</string>
+    <string name="victory">Victory!</string>
+    <string name="defeat">Defeat</string>
+    <string name="draw">Draw</string>
+    <string name="your_kills">Your kills: %1$d</string>
+    <string name="tap_continue">Tap \'Continue\' to return to the lobby.</string>
+    <string name="button_continue">Continue</string>
+    <string name="game_players_count">Players: %1$d</string>
 </resources>

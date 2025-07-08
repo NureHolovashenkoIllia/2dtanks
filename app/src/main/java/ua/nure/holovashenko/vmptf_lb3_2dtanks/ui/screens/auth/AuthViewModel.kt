@@ -11,7 +11,9 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.tasks.await
 
-class AuthViewModel : ViewModel() {
+class AuthViewModel(
+    private val strings: AuthStrings
+) : ViewModel() {
     private val auth = FirebaseAuth.getInstance()
     private val firestore = FirebaseFirestore.getInstance()
 
@@ -142,26 +144,30 @@ class AuthViewModel : ViewModel() {
 
     private fun validateEmail(email: String): String? {
         return when {
-            email.isBlank() -> "Email cannot be empty"
-            !Patterns.EMAIL_ADDRESS.matcher(email).matches() -> "Invalid email format"
+            email.isBlank() -> strings.emailEmpty
+            !Patterns.EMAIL_ADDRESS.matcher(email).matches() -> strings.emailInvalid
             else -> null
         }
     }
 
     private fun validatePassword(password: String): String? {
         return when {
-            password.isBlank() -> "Password cannot be empty"
-            password.length < 6 -> "Password must be at least 6 characters"
+            password.isBlank() -> strings.passwordEmpty
+            password.length < 6 -> strings.passwordShort
             else -> null
         }
     }
 
     private suspend fun validateNicknameUniqueness(nickname: String): String? {
-        if (nickname.isBlank()) return "Nickname cannot be empty"
-        if (nickname.length < 3) return "Nickname must be at least 3 characters"
-        val snapshot = firestore.collection("users")
-            .whereEqualTo("nickname", nickname)
-            .get().await()
-        return if (!snapshot.isEmpty) "Nickname already taken" else null
+        return when {
+            nickname.isBlank() -> strings.nicknameEmpty
+            nickname.length < 3 -> strings.nicknameShort
+            else -> {
+                val snapshot = firestore.collection("users")
+                    .whereEqualTo("nickname", nickname)
+                    .get().await()
+                if (!snapshot.isEmpty) strings.nicknameTaken else null
+            }
+        }
     }
 }

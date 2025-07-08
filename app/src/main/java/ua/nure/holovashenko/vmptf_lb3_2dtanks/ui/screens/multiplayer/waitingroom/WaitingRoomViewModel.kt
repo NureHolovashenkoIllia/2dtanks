@@ -15,6 +15,12 @@ class WaitingRoomViewModel : ViewModel() {
     private val _uiState = MutableStateFlow(WaitingRoomUiState())
     val uiState: StateFlow<WaitingRoomUiState> = _uiState
 
+    private lateinit var strings: WaitingRoomStrings
+
+    fun updateStrings(strings: WaitingRoomStrings) {
+        this.strings = strings
+    }
+
     fun observeRoom(roomId: String, onRoomClosed: () -> Unit) {
         removeListener()
         val docRef = firestore.collection("gameRooms").document(roomId)
@@ -60,7 +66,7 @@ class WaitingRoomViewModel : ViewModel() {
         if (playerIds.isNotEmpty()) {
             fetchPlayerEmails(playerIds) { emailMap ->
                 val teamEmails = teamMap.mapValues { entry ->
-                    entry.value.map { playerId -> emailMap[playerId] ?: "Unknown" }
+                    entry.value.map { playerId -> emailMap[playerId] ?: strings.unknownPlayer }
                 }
                 _uiState.value = _uiState.value.copy(teamEmails = teamEmails)
             }
@@ -82,7 +88,7 @@ class WaitingRoomViewModel : ViewModel() {
             onRoomClosed()
         } else {
             fetchPlayerEmails(playerIds) { emailMap ->
-                val emails = playerIds.map { emailMap[it] ?: "Unknown" }
+                val emails = playerIds.map { emailMap[it] ?: strings.unknownPlayer }
                 _uiState.value = _uiState.value.copy(playerEmails = emails)
             }
         }
@@ -94,7 +100,7 @@ class WaitingRoomViewModel : ViewModel() {
             .get()
             .addOnSuccessListener { result ->
                 val emailMap = result.documents.associate {
-                    it.id to (it.getString("nickname") ?: "Unknown")
+                    it.id to (it.getString("nickname") ?: strings.unknownPlayer)
                 }
                 onResult(emailMap)
             }
@@ -130,7 +136,7 @@ class WaitingRoomViewModel : ViewModel() {
                     val players = (snapshot.get("players") as? List<*>)?.filterIsInstance<String>() ?: emptyList()
                     if (players.size < 2) {
                         _uiState.value = _uiState.value.copy(
-                            errorMessage = "At least two players are required to start the game."
+                            errorMessage = strings.errorMinPlayers
                         )
                         return@addOnSuccessListener
                     }
@@ -143,7 +149,7 @@ class WaitingRoomViewModel : ViewModel() {
                     }
                     if (anyTeamEmpty) {
                         _uiState.value = _uiState.value.copy(
-                            errorMessage = "Each team must have at least one player."
+                            errorMessage = strings.errorTeamEmpty
                         )
                         return@addOnSuccessListener
                     }
@@ -169,7 +175,7 @@ class WaitingRoomViewModel : ViewModel() {
 
         firestore.runTransaction { transaction ->
             val snapshot = transaction.get(roomRef)
-            if (!snapshot.exists()) throw Exception("Room not found")
+            if (!snapshot.exists()) throw Exception(strings.errorRoomNotFound)
 
             val players = (snapshot.get("players") as? List<*>)?.filterIsInstance<String>() ?: emptyList()
             val updatedPlayers = players - playerId
@@ -180,7 +186,7 @@ class WaitingRoomViewModel : ViewModel() {
                 transaction.update(roomRef, "players", updatedPlayers)
             }
         }.addOnSuccessListener { onSuccess() }
-            .addOnFailureListener { e -> onError(e.localizedMessage ?: "Leave failed") }
+            .addOnFailureListener { e -> onError(e.localizedMessage ?: strings.errorLeaveFailed) }
     }
 
     fun isRoomFull(): Boolean {

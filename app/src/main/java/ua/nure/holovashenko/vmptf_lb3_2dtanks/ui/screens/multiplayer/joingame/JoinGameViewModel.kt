@@ -27,13 +27,14 @@ class JoinGameViewModel : ViewModel() {
 
     fun joinRoom(
         playerId: String,
-        onSuccess: (String, String, Boolean) -> Unit
+        onSuccess: (String, String, Boolean) -> Unit,
+        strings: JoinGameStrings
     ) {
         val roomCode = _uiState.value.roomCode.trim()
         val selectedType = _uiState.value.gameType
 
         if (roomCode.isBlank()) {
-            showError("Введіть код кімнати")
+            showError(strings.emptyRoomCode)
             return
         }
 
@@ -43,34 +44,35 @@ class JoinGameViewModel : ViewModel() {
 
         docRef.get().addOnSuccessListener { snapshot ->
             if (!snapshot.exists()) {
-                showError("Кімната не знайдена")
+                showError(strings.roomNotFound)
                 return@addOnSuccessListener
             }
 
             val roomType = snapshot.getString("type")
 
             if (roomType == null) {
-                showError("Невідомий тип кімнати")
+                showError(strings.unknownRoomType)
                 return@addOnSuccessListener
             }
+
+            val expected = if (roomType == "tournament") "Tournament" else "Free"
+            val actual = if (selectedType == GameType.TOURNAMENT) "Tournament" else "Free"
 
             if ((roomType == "tournament" && selectedType != GameType.TOURNAMENT) ||
                 (roomType == "free" && selectedType != GameType.FREE)
             ) {
-                val expected = if (roomType == "tournament") "Tournament" else "Free"
-                val actual = if (selectedType == GameType.TOURNAMENT) "Tournament" else "Free"
-                showError("Обраний режим ($actual) не відповідає типу кімнати ($expected)")
+                showError("ROOM_TYPE_MISMATCH:$expected:$actual")
                 return@addOnSuccessListener
             }
 
             if (roomType == "tournament") {
-                joinTournamentRoom(docRef, snapshot.data ?: emptyMap(), playerId, onSuccess)
+                joinTournamentRoom(docRef, snapshot.data ?: emptyMap(), playerId, onSuccess, strings)
             } else {
-                joinFreeRoom(docRef, snapshot.data ?: emptyMap(), playerId, onSuccess)
+                joinFreeRoom(docRef, snapshot.data ?: emptyMap(), playerId, onSuccess, strings)
             }
 
         }.addOnFailureListener {
-            showError("Помилка при підключенні: ${it.localizedMessage}")
+            showError("${strings.joinError}: ${it.localizedMessage}")
         }
     }
 
@@ -78,7 +80,8 @@ class JoinGameViewModel : ViewModel() {
         docRef: com.google.firebase.firestore.DocumentReference,
         data: Map<String, Any>,
         playerId: String,
-        onSuccess: (String, String, Boolean) -> Unit
+        onSuccess: (String, String, Boolean) -> Unit,
+        strings: JoinGameStrings
     ) {
         val currentPlayers = (data["players"] as? List<*>)?.filterIsInstance<String>() ?: emptyList()
 
@@ -88,7 +91,7 @@ class JoinGameViewModel : ViewModel() {
                 onSuccess(docRef.id, playerId, false)
                 _uiState.update { it.copy(isJoining = false) }
             }.addOnFailureListener {
-                showError("Не вдалося приєднатися")
+                showError(strings.joinFailed)
             }
         } else {
             onSuccess(docRef.id, playerId, false)
@@ -100,11 +103,12 @@ class JoinGameViewModel : ViewModel() {
         docRef: com.google.firebase.firestore.DocumentReference,
         data: Map<String, Any>,
         playerId: String,
-        onSuccess: (String, String, Boolean) -> Unit
+        onSuccess: (String, String, Boolean) -> Unit,
+        strings: JoinGameStrings
     ) {
         val teamName = _uiState.value.teamName.trim()
         if (teamName.isBlank()) {
-            showError("Введіть назву команди"); return
+            showError(strings.emptyTeamName); return
         }
 
         val playersPerTeam = (data["playersPerTeam"] as? Long)?.toInt() ?: 0
@@ -115,7 +119,7 @@ class JoinGameViewModel : ViewModel() {
         }?.toMap() ?: emptyMap()
 
         val currentTeam = teamsMap[teamName] ?: run {
-            showError("Команду не знайдено"); return
+            showError(strings.teamNotFound); return
         }
 
         if (currentTeam.contains(playerId)) {
@@ -125,7 +129,7 @@ class JoinGameViewModel : ViewModel() {
         }
 
         if (currentTeam.size >= playersPerTeam) {
-            showError("Команда вже заповнена"); return
+            showError(strings.teamFull); return
         }
 
         val updatedTeams = teamsMap.toMutableMap().apply {
@@ -136,7 +140,7 @@ class JoinGameViewModel : ViewModel() {
             onSuccess(docRef.id, playerId, true)
             _uiState.update { it.copy(isJoining = false) }
         }.addOnFailureListener {
-            showError("Не вдалося приєднатися")
+            showError(strings.joinFailed)
         }
     }
 

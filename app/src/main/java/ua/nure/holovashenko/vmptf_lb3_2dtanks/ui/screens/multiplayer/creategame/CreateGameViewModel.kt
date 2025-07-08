@@ -29,8 +29,12 @@ class CreateGameViewModel : ViewModel() {
 
     fun onGameTypeChange(type: GameType) = updateState { it.copy(type = type, errorMessage = null) }
 
-    fun createRoom(currentPlayerId: String, onRoomCreated: (String, String, Boolean) -> Unit) {
-        if (!validateInputs()) return
+    fun createRoom(
+        currentPlayerId: String,
+        onRoomCreated: (String, String, Boolean) -> Unit,
+        strings: CreateGameStrings
+    ) {
+        if (!validateInputs(strings)) return
 
         creationJob?.cancel()
         updateState { it.copy(isCreating = true, errorMessage = null) }
@@ -52,7 +56,7 @@ class CreateGameViewModel : ViewModel() {
                         updateState {
                             it.copy(
                                 isCreating = false,
-                                errorMessage = "Не вдалося створити кімнату. Спробуйте ще раз."
+                                errorMessage = strings.errorCreationFailed
                             )
                         }
                     }
@@ -64,7 +68,7 @@ class CreateGameViewModel : ViewModel() {
                 updateState {
                     it.copy(
                         isCreating = false,
-                        errorMessage = "Таймаут: сервер не відповідає. Перевірте з'єднання."
+                        errorMessage = strings.errorTimeout
                     )
                 }
             }
@@ -96,7 +100,7 @@ class CreateGameViewModel : ViewModel() {
         }
     }
 
-    private fun validateInputs(): Boolean {
+    private fun validateInputs(strings: CreateGameStrings): Boolean {
         val state = uiState.value
         return when (state.type) {
             GameType.TOURNAMENT -> {
@@ -105,9 +109,9 @@ class CreateGameViewModel : ViewModel() {
                 val duration = state.gameDuration.toIntOrNull()
 
                 when {
-                    teams == null || teams < 2 -> showError("Teams count must be at least 2")
-                    perTeam == null || perTeam < 1 -> showError("Players per team must be at least 1")
-                    duration == null || duration < 1 -> showError("Game duration must be at least 1")
+                    teams == null || teams < 2 -> showError(strings.errorTeamsCount)
+                    perTeam == null || perTeam < 1 -> showError(strings.errorPlayersPerTeam)
+                    duration == null || duration < 1 -> showError(strings.errorGameDuration)
                     else -> true
                 }
             }
@@ -117,8 +121,8 @@ class CreateGameViewModel : ViewModel() {
                 val duration = state.gameDuration.toIntOrNull()
 
                 when {
-                    count == null || count < 2 -> showError("Players count must be at least 2")
-                    duration == null || duration < 1 -> showError("Game duration must be at least 1")
+                    count == null || count < 2 -> showError(strings.errorPlayersCount)
+                    duration == null || duration < 1 -> showError(strings.errorGameDuration)
                     else -> true
                 }
             }
