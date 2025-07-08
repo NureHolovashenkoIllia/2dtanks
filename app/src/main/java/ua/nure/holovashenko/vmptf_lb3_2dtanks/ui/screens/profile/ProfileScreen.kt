@@ -97,15 +97,15 @@ fun ProfileScreen(
                         style = MaterialTheme.typography.bodyLarge
                     )
                     Text(
-                        text = stringResource(R.string.games_won, gamesWon?.toString() ?: stringResource(R.string.loading)),
+                        text = stringResource(R.string.games_won, gamesWon?.toString() ?: 0),
                         style = MaterialTheme.typography.bodyLarge
                     )
                     Text(
-                        text = stringResource(R.string.games_played, gamesPlayed?.toString() ?: stringResource(R.string.loading)),
+                        text = stringResource(R.string.games_played, gamesPlayed?.toString() ?: 0),
                         style = MaterialTheme.typography.bodyLarge
                     )
                     Text(
-                        text = stringResource(R.string.tanks_destroyed, tanksDestroyed?.toString() ?: stringResource(R.string.loading)),
+                        text = stringResource(R.string.tanks_destroyed, tanksDestroyed?.toString() ?: 0),
                         style = MaterialTheme.typography.bodyLarge
                     )
                 }

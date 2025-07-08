@@ -82,6 +82,8 @@ class ProfileViewModel : ViewModel() {
 
                         val winnerDisplay = if (type == "tournament") {
                             winnerUid
+                        } else if (winnerUid == "Draw") {
+                            winnerUid
                         } else {
                             try {
                                 val userDoc =

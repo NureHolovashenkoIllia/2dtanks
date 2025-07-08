@@ -77,10 +77,9 @@ class GameRepository(private val firestore: FirebaseFirestore = FirebaseFirestor
     suspend fun resetGameState(roomId: String) {
         val roomRef = firestore.collection("gameRooms").document(roomId)
 
-        // Очищаємо лише дані, пов’язані з грою, а не саму кімнату
         val updates = mapOf(
-            "positions" to emptyMap<String, Any>(),
-            "aliveStatus" to emptyMap<String, Any>(),
+//            "positions" to emptyMap<String, Any>(),
+//            "aliveStatus" to emptyMap<String, Any>(),
             "bullets" to emptyList<Any>(),
             "map" to FieldValue.delete(),
             "gameStarted" to false,

@@ -46,10 +46,12 @@ class LeaderboardViewModel : ViewModel() {
                     PlayerStatistic(uid, nickname, email, wins, kills, matches)
                 }
 
+                val filteredStats = stats.filter { it.wins > 0 && it.kills > 0 && it.matches > 0 }
+
                 _leaderboard.value = when (_sortOption.value) {
-                    SortOption.WINS -> stats.sortedByDescending { it.wins }
-                    SortOption.MATCHES -> stats.sortedByDescending { it.matches }
-                    SortOption.KILLS -> stats.sortedByDescending { it.kills }
+                    SortOption.WINS -> filteredStats.sortedByDescending { it.wins }
+                    SortOption.MATCHES -> filteredStats.sortedByDescending { it.matches }
+                    SortOption.KILLS -> filteredStats.sortedByDescending { it.kills }
                 }
             } catch (_: Exception) {
                 _leaderboard.value = emptyList()
